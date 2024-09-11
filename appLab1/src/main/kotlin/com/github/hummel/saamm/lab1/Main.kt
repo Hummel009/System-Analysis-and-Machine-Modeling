@@ -31,7 +31,7 @@ fun generateRandomNumbers(x0: Long, a: Long, c: Long, m: Long, count: Int): List
 	val randomNumbers = mutableListOf<Double>()
 	var xn = x0
 
-	for (i in 0 until count) {
+	repeat(count) {
 		xn = (a * xn + c) % m
 		randomNumbers.add(xn.toDouble() / m)
 	}
@@ -43,9 +43,10 @@ fun buildHistogram(numbers: List<Double>, bins: Int): IntArray {
 	val histogram = IntArray(bins) { 0 }
 	val binSize = 1.0 / bins // ширина интервала
 
-	for (number in numbers) {
-		val binIndex = floor(number / binSize).toInt().coerceAtMost(bins - 1)
-		histogram[binIndex]++
+	numbers.asSequence().map {
+		floor(it / binSize).toInt().coerceAtMost(bins - 1)
+	}.forEach {
+		histogram[it]++
 	}
 
 	return histogram
@@ -53,10 +54,9 @@ fun buildHistogram(numbers: List<Double>, bins: Int): IntArray {
 
 fun chiSquareTest(histogram: IntArray, total: Int): Double {
 	val expected = total.toDouble() / histogram.size
-	var chiSquare = 0.0
 
-	for (observed in histogram) { //та первая чёрная формула
-		chiSquare += (observed - expected).pow(2) / expected
+	val chiSquare = histogram.sumOf {
+		(it - expected).pow(2) / expected
 	}
 
 	return chiSquare
@@ -78,4 +78,4 @@ fun kolmogorovSmirnovTest(numbers: List<Double>): Pair<Double, Double> {
 	return dPlus to dMinus
 }
 
-operator fun String.times(count: Int) = this.repeat(count)
+operator fun String.times(count: Int): String = this.repeat(count)
