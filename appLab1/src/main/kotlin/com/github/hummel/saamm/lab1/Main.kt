@@ -4,27 +4,26 @@ import kotlin.math.floor
 import kotlin.math.pow
 
 fun main() {
-	val x0 = 123456789L // Начальное значение, большое неотрицательное
-	val a = 152353L // Множитель, нечётный
-	val c = 5.0.pow(11).toLong() // Приращение, взаимно просто с м
-	val m = 2.0.pow(30).toLong() // Модуль (2^32)
+	val x0 = 123456789L
+	val a = 152353L
+	val c = 5.0.pow(11).toLong()
+	val m = 2.0.pow(30).toLong()
 
-	val count = 100 // Количество генерируемых чисел
-	val randomNumbers = generateRandomNumbers(x0, a, c, m, count)
+	val quantity = 100
+	val randomNumbers = generateRandomNumbers(x0, a, c, m, quantity)
 	val histogram = buildHistogram(randomNumbers, 20)
 
-	println("гистограмма:")
+	println("Histogram:")
 	histogram.forEachIndexed { index, value ->
 		println("${index + 1}: ${"*" * value}")
 	}
 
-	// тест хи квадрат
-	val chiSquareResult = chiSquareTest(histogram, count)
-	println("хи квадрат: $chiSquareResult")
+	val chiSquareResult = chiSquareTest(histogram, quantity)
+	println("Chi Square: $chiSquareResult")
 
 	val ksResult = kolmogorovSmirnovTest(randomNumbers)
-	println("колмогоров p: ${ksResult.first}")
-	println("колмогоров m: ${ksResult.second}")
+	println("KS+: ${ksResult.first}")
+	println("KS-: ${ksResult.second}")
 }
 
 fun generateRandomNumbers(x0: Long, a: Long, c: Long, m: Long, count: Int): List<Double> {
@@ -41,7 +40,7 @@ fun generateRandomNumbers(x0: Long, a: Long, c: Long, m: Long, count: Int): List
 
 fun buildHistogram(numbers: List<Double>, bins: Int): IntArray {
 	val histogram = IntArray(bins) { 0 }
-	val binSize = 1.0 / bins // ширина интервала
+	val binSize = 1.0 / bins
 
 	numbers.asSequence().map {
 		floor(it / binSize).toInt().coerceAtMost(bins - 1)
