@@ -1,80 +1,148 @@
 package com.github.hummel.saamm.lab2
 
-import kotlin.math.floor
-import kotlin.math.pow
+import kotlinx.coroutines.*
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.random.Random
 
-fun main() {
-	val x0 = 123456789L
-	val a = 152353L
-	val c = 5.0.pow(11).toLong()
-	val m = 2.0.pow(30).toLong()
+const val NUM_PARTS_TYPE_1 = 3
+const val NUM_PARTS_TYPE_2 = 2
+const val PARTS_PER_BATCH = 8 * 3
 
-	val quantity = 100
-	val randomNumbers = generateRandomNumbers(x0, a, c, m, quantity)
-	val histogram = buildHistogram(randomNumbers, 20)
-
-	println("Histogram:")
-	histogram.forEachIndexed { index, value ->
-		println("${index + 1}: ${"*" * value}")
-	}
-
-	val chiSquareResult = chiSquareTest(histogram, quantity)
-	println("Chi Square: $chiSquareResult")
-
-	val ksResult = kolmogorovSmirnovTest(randomNumbers)
-	println("KS+: ${ksResult.first}")
-	println("KS-: ${ksResult.second}")
+fun main() = runBlocking {
+	val factory = Factory()
+	factory.run()
 }
 
-fun generateRandomNumbers(x0: Long, a: Long, c: Long, m: Long, count: Int): List<Double> {
-	val randomNumbers = mutableListOf<Double>()
-	var xn = x0
+/*
+	Концептуальная модель
 
-	repeat(count) {
-		xn = (a * xn + c) % m
-		randomNumbers.add(xn.toDouble() / m)
+	Элементы модели:
+
+	1) Источник деталей: Генерирует детали двух типов.
+	2) Станки: Обрабатывают детали каждого типа и помещают их в накопитель.
+	3) Накопитель: Сохраняет обработанные детали, пока не сформируется комплект для сборки изделия.
+	4) Сборка: Собирает изделия из деталей, используя необходимые количества каждого типа.
+	5) Транспортный робот: Перемещает изделия на склад после сборки.
+
+	Взаимодействие элементов:
+
+	Часть 1 (Генерация): Источник деталей генерирует детали и передаёт их на станки.
+	Часть 2 (Обработка): Станки обрабатывают детали и помещают их в накопитель.
+	Часть 3 (Сборка): Накопитель передаёт детали на сборку, которая формирует изделия.
+	Часть 4 (Транспортировка): Транспортный робот отправляет готовые изделия на склад.
+*/
+
+class Factory {
+	private val partsType1 = AtomicInteger(0)
+	private val partsType2 = AtomicInteger(0)
+	private val partsStorage = AtomicInteger(0)
+	private val finishedProducts = AtomicInteger(0)
+
+	private val statistics = Statistics()
+	private val startTime = System.currentTimeMillis()
+
+	suspend fun run() {
+		coroutineScope {
+			launch { partGenerator() }
+			launch { machine(1, partsType1) }
+			launch { machine(2, partsType2) }
+			launch { assembler() }
+			launch { transporter() }
+		}
 	}
 
-	return randomNumbers
-}
-
-fun buildHistogram(numbers: List<Double>, bins: Int): IntArray {
-	val histogram = IntArray(bins) { 0 }
-	val binSize = 1.0 / bins
-
-	numbers.asSequence().map {
-		floor(it / binSize).toInt().coerceAtMost(bins - 1)
-	}.forEach {
-		histogram[it]++
+	// Источник деталей
+	private suspend fun partGenerator() {
+		while (true) {
+			delay(1000)
+			if (Random.nextBoolean()) {
+				partsType1.incrementAndGet()
+				println("Сгенерирована деталь типа 1. Всего: ${partsType1.get()}")
+			} else {
+				partsType2.incrementAndGet()
+				println("Сгенерирована деталь типа 2. Всего: ${partsType2.get()}")
+			}
+			traceState()
+		}
 	}
 
-	return histogram
-}
-
-fun chiSquareTest(histogram: IntArray, total: Int): Double {
-	val expected = total.toDouble() / histogram.size
-
-	val chiSquare = histogram.sumOf {
-		(it - expected).pow(2) / expected
+	// Станок
+	private suspend fun machine(type: Int, parts: AtomicInteger) {
+		while (true) {
+			if (parts.get() > 0) {
+				parts.decrementAndGet()
+				delay(1000)
+				partsStorage.incrementAndGet()
+				println("Станок $type обработал деталь. Хранилище деталей: ${partsStorage.get()}")
+				statistics.incrementProcessedParts()
+			} else {
+				delay(500) // Снижаем нагрузку на CPU
+			}
+		}
 	}
 
-	return chiSquare
-}
-
-fun kolmogorovSmirnovTest(numbers: List<Double>): Pair<Double, Double> {
-	val sortedNumbers = numbers.sorted()
-	val n = numbers.size
-	var dPlus = 0.0
-	var dMinus = 0.0
-
-	for (i in sortedNumbers.indices) {
-		val empiricalCdf = (i + 1).toDouble() / n
-		val theoreticalCdf = sortedNumbers[i]
-		dPlus = maxOf(dPlus, empiricalCdf - theoreticalCdf)
-		dMinus = maxOf(dMinus, theoreticalCdf - (i.toDouble() / n))
+	// Сборщик
+	private suspend fun assembler() {
+		while (true) {
+			if (partsStorage.get() >= NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
+				delay(1000)
+				finishedProducts.incrementAndGet()
+				println("Собрано изделие. Всего изделий: ${finishedProducts.get()}")
+				statistics.incrementFinishedProducts()
+				repeat(NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) { partsStorage.decrementAndGet() }
+			} else {
+				delay(500) // Снижаем нагрузку на CPU
+			}
+		}
 	}
 
-	return dPlus to dMinus
+	// Транспортировщик
+	private suspend fun transporter() {
+		while (true) {
+			if (finishedProducts.get() >= PARTS_PER_BATCH) {
+				delay(1000)
+				finishedProducts.addAndGet(-PARTS_PER_BATCH)
+				println("Отправлено на склад: $PARTS_PER_BATCH изделий. Оставшиеся: ${finishedProducts.get()}")
+				statistics.incrementBatchesSent()
+			} else {
+				delay(500) // Снижаем нагрузку на CPU
+			}
+		}
+	}
+
+	private fun traceState() {
+		statistics.printStatistics(startTime)
+	}
 }
 
-operator fun String.times(count: Int): String = this.repeat(count)
+class Statistics {
+	private val processedParts = AtomicInteger(0)
+	private val finishedProducts = AtomicInteger(0)
+	private val batchesSent = AtomicInteger(0)
+
+	fun incrementProcessedParts() {
+		processedParts.incrementAndGet()
+	}
+
+	fun incrementFinishedProducts() {
+		finishedProducts.incrementAndGet()
+	}
+
+	fun incrementBatchesSent() {
+		batchesSent.incrementAndGet()
+	}
+
+	fun printStatistics(startTime: Long) {
+		val currentTime = System.currentTimeMillis()
+		val elapsedTimeInMinutes = (currentTime - startTime) / 1000 // Время работы в секундах
+		val averageTimePerAssembly =
+			if (finishedProducts.get() > 0) elapsedTimeInMinutes / finishedProducts.get() else 0
+
+		val redColor = "\u001B[31m" // Код для красного цвета
+		val resetColor = "\u001B[0m" // Код для сброса цвета
+
+		println(
+			"${redColor}Статистика: Обработано деталей: ${processedParts.get()}, Собрано изделий: ${finishedProducts.get()}, " + "Отправлено партий: ${batchesSent.get()}, Среднее время на сборку: $averageTimePerAssembly сек${resetColor}"
+		)
+	}
+}
