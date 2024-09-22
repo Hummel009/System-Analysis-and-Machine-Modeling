@@ -13,8 +13,6 @@ val embed: Configuration by configurations.creating
 
 dependencies {
 	embed("org.jetbrains.kotlin:kotlin-stdlib:latest.release")
-	embed("org.knowm.xchart:xchart:latest.release")
-	implementation("org.knowm.xchart:xchart:latest.release")
 }
 
 java {
@@ -24,7 +22,7 @@ java {
 }
 
 application {
-	mainClass = "com.github.hummel.saamm.lab1.MainKt"
+	mainClass = "com.github.hummel.saamm.lab2.MainKt"
 }
 
 tasks {
@@ -35,7 +33,7 @@ tasks {
 		manifest {
 			attributes(
 				mapOf(
-					"Main-Class" to "com.github.hummel.saamm.lab1.MainKt"
+					"Main-Class" to "com.github.hummel.saamm.lab2.MainKt"
 				)
 			)
 		}
