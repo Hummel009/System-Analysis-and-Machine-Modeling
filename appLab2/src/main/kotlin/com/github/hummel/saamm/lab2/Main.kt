@@ -6,7 +6,8 @@ import kotlin.random.Random
 
 const val NUM_PARTS_TYPE_1 = 3
 const val NUM_PARTS_TYPE_2 = 2
-const val PARTS_PER_BATCH = 8 * 3
+const val PACKET_SIZE = 8
+const val PACKETS = 3
 
 fun main() = runBlocking {
 	val factory = Factory()
@@ -35,8 +36,10 @@ fun main() = runBlocking {
 class Factory {
 	private val partsType1 = AtomicInteger(0)
 	private val partsType2 = AtomicInteger(0)
-	private val partsStorage = AtomicInteger(0)
-	private val finishedProducts = AtomicInteger(0)
+	private val accumulator = AtomicInteger(0)
+	private val technoModule = AtomicInteger(0)
+	private val packModule = AtomicInteger(0)
+	private val finishedPackets = AtomicInteger(0)
 
 	private val statistics = Statistics()
 	private val startTime = System.currentTimeMillis()
@@ -47,6 +50,7 @@ class Factory {
 			launch { machine(1, partsType1) }
 			launch { machine(2, partsType2) }
 			launch { assembler() }
+			launch { packer() }
 			launch { transporter() }
 		}
 	}
@@ -57,23 +61,23 @@ class Factory {
 			delay(1000)
 			if (Random.nextBoolean()) {
 				partsType1.incrementAndGet()
-				println("Сгенерирована деталь типа 1. Всего: ${partsType1.get()}")
+				println("Сгенерирована деталь типа 1. Всего деталей: ${partsType1.get()}")
 			} else {
 				partsType2.incrementAndGet()
-				println("Сгенерирована деталь типа 2. Всего: ${partsType2.get()}")
+				println("Сгенерирована деталь типа 2. Всего деталей: ${partsType2.get()}")
 			}
 			traceState()
 		}
 	}
 
-	// Станок
+	// Станок, обрабатывающий детали
 	private suspend fun machine(type: Int, parts: AtomicInteger) {
 		while (true) {
 			if (parts.get() > 0) {
 				parts.decrementAndGet()
 				delay(1000)
-				partsStorage.incrementAndGet()
-				println("Станок $type обработал деталь. Хранилище деталей: ${partsStorage.get()}")
+				accumulator.incrementAndGet()
+				println("Станок $type обработал деталь. Деталей в накопителе: ${accumulator.get()}")
 				statistics.incrementProcessedParts()
 			} else {
 				delay(500) // Снижаем нагрузку на CPU
@@ -81,29 +85,62 @@ class Factory {
 		}
 	}
 
-	// Сборщик
+	// Сборщик изделий из деталей в технологическом модуле
 	private suspend fun assembler() {
 		while (true) {
-			if (partsStorage.get() >= NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
+			if (technoModule.get() >= NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
+				repeat(NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
+					technoModule.decrementAndGet()
+				}
 				delay(1000)
-				finishedProducts.incrementAndGet()
-				println("Собрано изделие. Всего изделий: ${finishedProducts.get()}")
+				packModule.incrementAndGet()
+				println("Собрано изделие. Всего изделий: ${packModule.get()}")
 				statistics.incrementFinishedProducts()
-				repeat(NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) { partsStorage.decrementAndGet() }
 			} else {
 				delay(500) // Снижаем нагрузку на CPU
 			}
 		}
 	}
 
-	// Транспортировщик
+	// Сборщик изделий в технологическом модуле
+	private suspend fun packer() {
+		while (true) {
+			if (packModule.get() >= PACKET_SIZE) {
+				repeat(PACKET_SIZE) {
+					packModule.decrementAndGet()
+				}
+				delay(1000)
+				finishedPackets.incrementAndGet()
+				println("Собрана партия. Всего партий: ${finishedPackets.get()}")
+				statistics.incrementFinishedPackets()
+			} else {
+				delay(500) // Снижаем нагрузку на CPU
+			}
+		}
+	}
+
+	// Транспортировщик из накопителя в модуль сборки и из модуля компоновки на склад
 	private suspend fun transporter() {
 		while (true) {
-			if (finishedProducts.get() >= PARTS_PER_BATCH) {
+			if (accumulator.get() >= NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
+				repeat(NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
+					accumulator.decrementAndGet()
+				}
 				delay(1000)
-				finishedProducts.addAndGet(-PARTS_PER_BATCH)
-				println("Отправлено на склад: $PARTS_PER_BATCH изделий. Оставшиеся: ${finishedProducts.get()}")
-				statistics.incrementBatchesSent()
+				repeat(NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
+					technoModule.incrementAndGet()
+				}
+				println("Перемещено в технологический модуль: ${NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2} деталей.")
+			} else {
+				delay(500) // Снижаем нагрузку на CPU
+			}
+
+			if (finishedPackets.get() >= PACKETS) {
+				repeat(PACKETS) {
+					finishedPackets.decrementAndGet()
+				}
+				delay(1000)
+				println("Перемещено на склад: $PACKETS партий изделий.")
 			} else {
 				delay(500) // Снижаем нагрузку на CPU
 			}
@@ -118,7 +155,7 @@ class Factory {
 class Statistics {
 	private val processedParts = AtomicInteger(0)
 	private val finishedProducts = AtomicInteger(0)
-	private val batchesSent = AtomicInteger(0)
+	private val finishedPackets = AtomicInteger(0)
 
 	fun incrementProcessedParts() {
 		processedParts.incrementAndGet()
@@ -128,21 +165,24 @@ class Statistics {
 		finishedProducts.incrementAndGet()
 	}
 
-	fun incrementBatchesSent() {
-		batchesSent.incrementAndGet()
+	fun incrementFinishedPackets() {
+		finishedPackets.incrementAndGet()
 	}
 
 	fun printStatistics(startTime: Long) {
 		val currentTime = System.currentTimeMillis()
-		val elapsedTimeInMinutes = (currentTime - startTime) / 1000 // Время работы в секундах
+		val elapsedTimeInMinutes = (currentTime - startTime) / 1000
 		val averageTimePerAssembly =
 			if (finishedProducts.get() > 0) elapsedTimeInMinutes / finishedProducts.get() else 0
 
-		val redColor = "\u001B[31m" // Код для красного цвета
-		val resetColor = "\u001B[0m" // Код для сброса цвета
+		val redColor = "\u001B[31m"
+		val resetColor = "\u001B[0m"
 
 		println(
-			"${redColor}Статистика: Обработано деталей: ${processedParts.get()}, Собрано изделий: ${finishedProducts.get()}, " + "Отправлено партий: ${batchesSent.get()}, Среднее время на сборку: $averageTimePerAssembly сек${resetColor}"
+			"${redColor}Статистика: Обработано деталей: ${processedParts.get()}," +
+					"Собрано изделий: ${finishedProducts.get()}, " +
+					"Собрано партий: ${finishedPackets.get()}, " +
+					"Среднее время на сборку: $averageTimePerAssembly сек${resetColor}"
 		)
 	}
 }
