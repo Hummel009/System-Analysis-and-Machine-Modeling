@@ -10,10 +10,51 @@ const val PACKET_SIZE = 8
 const val PACKETS = 3
 
 fun main() {
-	val factory = Factory()
-	factory.run()
+	val factories = Array(10) { Factory() }
+	val statisticsList = Array(10) { Statistics() }
 
-	factory.traceState()
+	val threads = factories.mapIndexed { index, factory ->
+		Thread {
+			factory.run()
+			statisticsList[index] = factory.statistics
+		}
+	}
+
+	threads.forEach { it.start() }
+	threads.forEach { it.join() }
+
+	printAverageStatistics(statisticsList)
+}
+
+fun printAverageStatistics(statisticsList: Array<Statistics>) {
+	val totalProducedParts1 = statisticsList.sumOf { it.producedParts1.get() }
+	val totalProducedParts2 = statisticsList.sumOf { it.producedParts2.get() }
+	val totalProcessedParts1 = statisticsList.sumOf { it.processedParts1.get() }
+	val totalProcessedParts2 = statisticsList.sumOf { it.processedParts2.get() }
+	val totalAssembledProducts = statisticsList.sumOf { it.assembledProducts.get() }
+	val totalPackedPackets = statisticsList.sumOf { it.packedPackets.get() }
+	val totalStoragePackets = statisticsList.sumOf { it.storagePackets.get() }
+	val totalSeconds = statisticsList.sumOf { it.seconds }
+
+	val numberOfFactories = statisticsList.size
+
+	val redColor = "\u001B[31m"
+	val resetColor = "\u001B[0m"
+
+	println(
+		"""
+		${redColor}Средняя статистика по $numberOfFactories заводам:
+		Создано деталей A: ${totalProducedParts1 / numberOfFactories},
+		Создано деталей B: ${totalProducedParts2 / numberOfFactories},
+		Обработано деталей A: ${totalProcessedParts1 / numberOfFactories},
+		Обработано деталей B: ${totalProcessedParts2 / numberOfFactories},
+		Собрано изделий: ${totalAssembledProducts / numberOfFactories},
+		Собрано партий: ${totalPackedPackets / numberOfFactories},
+		Партий на складе: ${totalStoragePackets / numberOfFactories},
+		Общее время (с): ${totalSeconds / numberOfFactories},
+		Время на производство одной детали (с): ${totalSeconds / totalAssembledProducts}$resetColor
+		""".trimIndent()
+	)
 }
 
 class Factory {
@@ -26,10 +67,10 @@ class Factory {
 	private val packPlacePackets = AtomicInteger(0)
 	private val storagePackets = AtomicInteger(0)
 
-	private val statistics = Statistics()
 	private val random = Random()
-
 	private var currentTime = AtomicLong(0)
+
+	val statistics = Statistics()
 
 	fun run() {
 		val threads = mutableListOf(Thread { partGenerator() },
@@ -40,6 +81,8 @@ class Factory {
 			Thread { transporter() })
 		threads.forEach { it.start() }
 		threads.forEach { it.join() }
+
+		traceState()
 	}
 
 	private fun partGenerator() {
@@ -153,21 +196,23 @@ class Factory {
 		}
 	}
 
-	private fun getStopRule(): Boolean = currentTime.get() < 60 * 1000
+	private fun getStopRule(): Boolean = storagePackets.get() < 100
 
 	fun traceState() {
 		statistics.printStatistics(currentTime)
+		println()
 	}
 }
 
 class Statistics {
-	private val producedParts1 = AtomicInteger(0)
-	private val producedParts2 = AtomicInteger(0)
-	private val processedParts1 = AtomicInteger(0)
-	private val processedParts2 = AtomicInteger(0)
-	private val assembledProducts = AtomicInteger(0)
-	private val packedPackets = AtomicInteger(0)
-	private val storagePackets = AtomicInteger(0)
+	val producedParts1 = AtomicInteger(0)
+	val producedParts2 = AtomicInteger(0)
+	val processedParts1 = AtomicInteger(0)
+	val processedParts2 = AtomicInteger(0)
+	val assembledProducts = AtomicInteger(0)
+	val packedPackets = AtomicInteger(0)
+	val storagePackets = AtomicInteger(0)
+	var seconds = 0
 
 	fun incrementProducedParts(i: Int) {
 		if (i == 1) {
@@ -198,7 +243,7 @@ class Statistics {
 	}
 
 	fun printStatistics(currentTime: AtomicLong) {
-		val seconds = (currentTime.get() / 1000).toInt()
+		seconds = (currentTime.get() / 1000).toInt()
 
 		println(
 			"""
