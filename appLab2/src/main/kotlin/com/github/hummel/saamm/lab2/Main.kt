@@ -2,6 +2,7 @@ package com.github.hummel.saamm.lab2
 
 import java.util.Random
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 const val NUM_PARTS_TYPE_1 = 3
 const val NUM_PARTS_TYPE_2 = 2
@@ -28,17 +29,15 @@ class Factory {
 	private val statistics = Statistics()
 	private val random = Random()
 
-	private var currentTime = 0L
+	private var currentTime = AtomicLong(0)
 
 	fun run() {
-		val threads = mutableListOf(
-			Thread { partGenerator() },
+		val threads = mutableListOf(Thread { partGenerator() },
 			Thread { machine(1, partsType1, accumulatorPartsType1) },
 			Thread { machine(2, partsType2, accumulatorPartsType2) },
 			Thread { assembler() },
 			Thread { packer() },
-			Thread { transporter() }
-		)
+			Thread { transporter() })
 		threads.forEach { it.start() }
 		threads.forEach { it.join() }
 	}
@@ -47,8 +46,8 @@ class Factory {
 		while (getStopRule()) {
 			Thread.sleep(1)
 
-			val partTime = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toInt()
-			currentTime += partTime
+			val time = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toLong()
+			currentTime.getAndAdd(time)
 
 			if (random.nextBoolean()) {
 				partsType1.incrementAndGet()
@@ -69,8 +68,8 @@ class Factory {
 			if (parts.get() > 0) {
 				parts.decrementAndGet()
 
-				val processTime = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toInt()
-				currentTime += processTime
+				val time = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toLong()
+				currentTime.getAndAdd(time)
 
 				accumulator.incrementAndGet()
 
@@ -88,8 +87,8 @@ class Factory {
 					technoModuleParts.decrementAndGet()
 				}
 
-				val assemblyTime = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toInt()
-				currentTime += assemblyTime
+				val time = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toLong()
+				currentTime.getAndAdd(time)
 
 				packPlaceProducts.incrementAndGet()
 
@@ -107,8 +106,8 @@ class Factory {
 					packPlaceProducts.decrementAndGet()
 				}
 
-				val packingTime = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toInt()
-				currentTime += packingTime
+				val time = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toLong()
+				currentTime.getAndAdd(time)
 
 				packPlacePackets.incrementAndGet()
 
@@ -129,8 +128,8 @@ class Factory {
 					accumulatorPartsType2.decrementAndGet()
 				}
 
-				val transportTime = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toInt()
-				currentTime += transportTime
+				val time = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toLong()
+				currentTime.getAndAdd(time)
 
 				repeat(NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
 					technoModuleParts.incrementAndGet()
@@ -142,8 +141,8 @@ class Factory {
 					packPlacePackets.decrementAndGet()
 				}
 
-				val warehouseTime = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toInt()
-				currentTime += warehouseTime
+				val time = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toLong()
+				currentTime.getAndAdd(time)
 
 				repeat(PACKETS) {
 					storagePackets.incrementAndGet()
@@ -154,7 +153,7 @@ class Factory {
 		}
 	}
 
-	private fun getStopRule(): Boolean = storagePackets.get() <= 10
+	private fun getStopRule(): Boolean = currentTime.get() < 60 * 1000
 
 	fun traceState() {
 		statistics.printStatistics(currentTime)
@@ -198,8 +197,8 @@ class Statistics {
 		storagePackets.incrementAndGet()
 	}
 
-	fun printStatistics(currentTime: Long) {
-		val seconds = (currentTime / 1000).toInt()
+	fun printStatistics(currentTime: AtomicLong) {
+		val seconds = (currentTime.get() / 1000).toInt()
 
 		println(
 			"""
