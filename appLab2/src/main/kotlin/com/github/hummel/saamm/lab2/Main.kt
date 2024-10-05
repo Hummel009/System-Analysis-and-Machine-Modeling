@@ -1,169 +1,219 @@
 package com.github.hummel.saamm.lab2
 
-import kotlinx.coroutines.*
+import java.util.Random
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.random.Random
 
 const val NUM_PARTS_TYPE_1 = 3
 const val NUM_PARTS_TYPE_2 = 2
 const val PACKET_SIZE = 8
 const val PACKETS = 3
 
-fun main() = runBlocking {
+fun main() {
 	val factory = Factory()
 	factory.run()
+
+	factory.traceState()
 }
 
 class Factory {
 	private val partsType1 = AtomicInteger(0)
 	private val partsType2 = AtomicInteger(0)
-	private val accumulator = AtomicInteger(0)
-	private val technoModule = AtomicInteger(0)
-	private val packModule = AtomicInteger(0)
-	private val finishedPackets = AtomicInteger(0)
+	private val accumulatorPartsType1 = AtomicInteger(0)
+	private val accumulatorPartsType2 = AtomicInteger(0)
+	private val technoModuleParts = AtomicInteger(0)
+	private val packPlaceProducts = AtomicInteger(0)
+	private val packPlacePackets = AtomicInteger(0)
+	private val storagePackets = AtomicInteger(0)
 
 	private val statistics = Statistics()
-	private val startTime = System.currentTimeMillis()
+	private val random = Random()
 
-	suspend fun run() {
-		coroutineScope {
-			launch { partGenerator() }
-			launch { machine(1, partsType1) }
-			launch { machine(2, partsType2) }
-			launch { assembler() }
-			launch { packer() }
-			launch { transporter() }
-		}
+	private var currentTime = 0L
+
+	fun run() {
+		val threads = mutableListOf(
+			Thread { partGenerator() },
+			Thread { machine(1, partsType1, accumulatorPartsType1) },
+			Thread { machine(2, partsType2, accumulatorPartsType2) },
+			Thread { assembler() },
+			Thread { packer() },
+			Thread { transporter() }
+		)
+		threads.forEach { it.start() }
+		threads.forEach { it.join() }
 	}
 
-	// Источник деталей
-	private suspend fun partGenerator() {
-		while (true) {
-			delay(1000)
-			if (Random.nextBoolean()) {
+	private fun partGenerator() {
+		while (getStopRule()) {
+			Thread.sleep(1)
+
+			val partTime = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toInt()
+			currentTime += partTime
+
+			if (random.nextBoolean()) {
 				partsType1.incrementAndGet()
-				println("Сгенерирована деталь типа 1. Всего деталей: ${partsType1.get()}")
+
+				statistics.incrementProducedParts(1)
 			} else {
 				partsType2.incrementAndGet()
-				println("Сгенерирована деталь типа 2. Всего деталей: ${partsType2.get()}")
+
+				statistics.incrementProducedParts(2)
 			}
-			traceState()
 		}
 	}
 
-	// Станок, обрабатывающий детали
-	private suspend fun machine(type: Int, parts: AtomicInteger) {
-		while (true) {
+	private fun machine(type: Int, parts: AtomicInteger, accumulator: AtomicInteger) {
+		while (getStopRule()) {
+			Thread.sleep(1)
+
 			if (parts.get() > 0) {
 				parts.decrementAndGet()
-				delay(1000)
+
+				val processTime = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toInt()
+				currentTime += processTime
+
 				accumulator.incrementAndGet()
-				println("Станок $type обработал деталь. Деталей в накопителе: ${accumulator.get()}")
-				statistics.incrementProcessedParts()
-			} else {
-				delay(500) // Снижаем нагрузку на CPU
+
+				statistics.incrementProcessedParts(type)
 			}
 		}
 	}
 
-	// Сборщик изделий из деталей в технологическом модуле
-	private suspend fun assembler() {
-		while (true) {
-			if (technoModule.get() >= NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
+	private fun assembler() {
+		while (getStopRule()) {
+			Thread.sleep(1)
+
+			if (technoModuleParts.get() >= NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
 				repeat(NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
-					technoModule.decrementAndGet()
+					technoModuleParts.decrementAndGet()
 				}
-				delay(1000)
-				packModule.incrementAndGet()
-				println("Собрано изделие. Всего изделий: ${packModule.get()}")
-				statistics.incrementFinishedProducts()
-			} else {
-				delay(500) // Снижаем нагрузку на CPU
+
+				val assemblyTime = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toInt()
+				currentTime += assemblyTime
+
+				packPlaceProducts.incrementAndGet()
+
+				statistics.incrementAssembledProducts()
 			}
 		}
 	}
 
-	// Сборщик изделий в технологическом модуле
-	private suspend fun packer() {
-		while (true) {
-			if (packModule.get() >= PACKET_SIZE) {
+	private fun packer() {
+		while (getStopRule()) {
+			Thread.sleep(1)
+
+			if (packPlaceProducts.get() >= PACKET_SIZE) {
 				repeat(PACKET_SIZE) {
-					packModule.decrementAndGet()
+					packPlaceProducts.decrementAndGet()
 				}
-				delay(1000)
-				finishedPackets.incrementAndGet()
-				println("Собрана партия. Всего партий: ${finishedPackets.get()}")
-				statistics.incrementFinishedPackets()
-			} else {
-				delay(500) // Снижаем нагрузку на CPU
+
+				val packingTime = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toInt()
+				currentTime += packingTime
+
+				packPlacePackets.incrementAndGet()
+
+				statistics.incrementPackedPackets()
 			}
 		}
 	}
 
-	// Транспортировщик из накопителя в модуль сборки и из модуля компоновки на склад
-	private suspend fun transporter() {
-		while (true) {
-			if (accumulator.get() >= NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
-				repeat(NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
-					accumulator.decrementAndGet()
+	private fun transporter() {
+		while (getStopRule()) {
+			Thread.sleep(1)
+
+			if (accumulatorPartsType1.get() >= NUM_PARTS_TYPE_1 && accumulatorPartsType2.get() >= NUM_PARTS_TYPE_2) {
+				repeat(NUM_PARTS_TYPE_1) {
+					accumulatorPartsType1.decrementAndGet()
 				}
-				delay(1000)
-				repeat(NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
-					technoModule.incrementAndGet()
+				repeat(NUM_PARTS_TYPE_2) {
+					accumulatorPartsType2.decrementAndGet()
 				}
-				println("Перемещено в технологический модуль: ${NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2} деталей.")
-			} else {
-				delay(500) // Снижаем нагрузку на CPU
+
+				val transportTime = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toInt()
+				currentTime += transportTime
+
+				repeat(NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
+					technoModuleParts.incrementAndGet()
+				}
 			}
 
-			if (finishedPackets.get() >= PACKETS) {
+			if (packPlacePackets.get() >= PACKETS) {
 				repeat(PACKETS) {
-					finishedPackets.decrementAndGet()
+					packPlacePackets.decrementAndGet()
 				}
-				delay(1000)
-				println("Перемещено на склад: $PACKETS партий изделий.")
-			} else {
-				delay(500) // Снижаем нагрузку на CPU
+
+				val warehouseTime = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toInt()
+				currentTime += warehouseTime
+
+				repeat(PACKETS) {
+					storagePackets.incrementAndGet()
+
+					statistics.incrementStoragePackets()
+				}
 			}
 		}
 	}
 
-	private fun traceState() {
-		statistics.printStatistics(startTime)
+	private fun getStopRule(): Boolean = storagePackets.get() <= 10
+
+	fun traceState() {
+		statistics.printStatistics(currentTime)
 	}
 }
 
 class Statistics {
-	private val processedParts = AtomicInteger(0)
-	private val finishedProducts = AtomicInteger(0)
-	private val finishedPackets = AtomicInteger(0)
+	private val producedParts1 = AtomicInteger(0)
+	private val producedParts2 = AtomicInteger(0)
+	private val processedParts1 = AtomicInteger(0)
+	private val processedParts2 = AtomicInteger(0)
+	private val assembledProducts = AtomicInteger(0)
+	private val packedPackets = AtomicInteger(0)
+	private val storagePackets = AtomicInteger(0)
 
-	fun incrementProcessedParts() {
-		processedParts.incrementAndGet()
+	fun incrementProducedParts(i: Int) {
+		if (i == 1) {
+			producedParts1.incrementAndGet()
+		} else {
+			producedParts2.incrementAndGet()
+		}
 	}
 
-	fun incrementFinishedProducts() {
-		finishedProducts.incrementAndGet()
+	fun incrementProcessedParts(i: Int) {
+		if (i == 1) {
+			processedParts1.incrementAndGet()
+		} else {
+			processedParts2.incrementAndGet()
+		}
 	}
 
-	fun incrementFinishedPackets() {
-		finishedPackets.incrementAndGet()
+	fun incrementAssembledProducts() {
+		assembledProducts.incrementAndGet()
 	}
 
-	fun printStatistics(startTime: Long) {
-		val currentTime = System.currentTimeMillis()
-		val elapsedTimeInMinutes = (currentTime - startTime) / 1000
-		val averageTimePerAssembly =
-			if (finishedProducts.get() > 0) elapsedTimeInMinutes / finishedProducts.get() else 0
+	fun incrementPackedPackets() {
+		packedPackets.incrementAndGet()
+	}
 
-		val redColor = "\u001B[31m"
-		val resetColor = "\u001B[0m"
+	fun incrementStoragePackets() {
+		storagePackets.incrementAndGet()
+	}
+
+	fun printStatistics(currentTime: Long) {
+		val seconds = (currentTime / 1000).toInt()
 
 		println(
-			"${redColor}Статистика: Обработано деталей: ${processedParts.get()}," +
-					"Собрано изделий: ${finishedProducts.get()}, " +
-					"Собрано партий: ${finishedPackets.get()}, " +
-					"Среднее время на сборку: $averageTimePerAssembly сек${resetColor}"
+			"""
+			Статистика:
+			Создано деталей A: ${producedParts1.get()},
+			Создано деталей B: ${producedParts2.get()},
+			Обработано деталей A: ${processedParts1.get()},
+			Обработано деталей B: ${processedParts2.get()},
+			Собрано изделий: ${assembledProducts.get()},
+			Собрано партий: ${packedPackets.get()},
+			Партий на складе: ${storagePackets.get()},
+			Общее время (с): $seconds,
+			Время на производство одной детали (с): ${seconds / assembledProducts.get()}
+			""".trimIndent()
 		)
 	}
 }
