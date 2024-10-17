@@ -52,7 +52,7 @@ fun printAverageStatistics(statisticsList: Array<Statistics>) {
 		Собрано партий: ${totalPackedPackets / numberOfFactories},
 		Партий на складе: ${totalStoragePackets / numberOfFactories},
 		Общее время (с): ${totalSeconds / numberOfFactories},
-		Время на производство одной детали (с): ${totalSeconds / totalAssembledProducts}$resetColor
+		Время на производство одного изделия (с): ${totalSeconds / totalAssembledProducts}$resetColor
 		""".trimIndent()
 	)
 }
@@ -256,7 +256,7 @@ class Statistics {
 			Собрано партий: ${packedPackets.get()},
 			Партий на складе: ${storagePackets.get()},
 			Общее время (с): $seconds,
-			Время на производство одной детали (с): ${seconds / assembledProducts.get()}
+			Время на производство одного изделия (с): ${seconds / assembledProducts.get()}
 			""".trimIndent()
 		)
 	}
