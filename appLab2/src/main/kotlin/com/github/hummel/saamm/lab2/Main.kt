@@ -243,7 +243,8 @@ class Statistics {
 	}
 
 	fun printStatistics(currentTime: AtomicLong) {
-		seconds = (currentTime.get() / 2000).toInt()
+		// Измеренная руками погрешность вычислений в симуляции (не учитывает выигрыши в простоях)
+		seconds = (currentTime.get() / 2126.582278481013).toInt()
 
 		println(
 			"""
