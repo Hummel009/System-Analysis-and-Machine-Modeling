@@ -243,7 +243,7 @@ class Statistics {
 	}
 
 	fun printStatistics(currentTime: AtomicLong) {
-		seconds = (currentTime.get() / 1000).toInt()
+		seconds = (currentTime.get() / 2000).toInt()
 
 		println(
 			"""
