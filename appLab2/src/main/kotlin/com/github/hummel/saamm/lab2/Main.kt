@@ -1,264 +1,120 @@
 package com.github.hummel.saamm.lab2
 
+import java.util.PriorityQueue
 import java.util.Random
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
 
-const val NUM_PARTS_TYPE_1 = 3
-const val NUM_PARTS_TYPE_2 = 2
-const val PACKET_SIZE = 8
-const val PACKETS = 3
+private val random = Random()
+
+data class Task(val endTime: Float, val taskType: String)
 
 fun main() {
-	val factories = Array(10) { Factory() }
-	val statisticsList = Array(10) { Statistics() }
+	val queue = PriorityQueue<Task>(compareBy { it.endTime })
+	var currentTime = 0f
 
-	val threads = factories.mapIndexed { index, factory ->
-		Thread {
-			factory.run()
-			statisticsList[index] = factory.statistics
-		}
-	}
+	queue.add(Task(currentTime, "Generator"))
 
-	threads.forEach { it.start() }
-	threads.forEach { it.join() }
+	var partsType1 = 0
+	var partsType2 = 0
+	var accumulatorPartsType1 = 0
+	var accumulatorPartsType2 = 0
+	var technoModuleParts = 0
+	var packPlaceProducts = 0
+	var packPlacePackets = 0
+	var storagePackets = 0
 
-	printAverageStatistics(statisticsList)
-}
+	while (storagePackets <= 10) {
+		val task = queue.poll()
+		currentTime = task.endTime
 
-fun printAverageStatistics(statisticsList: Array<Statistics>) {
-	val totalProducedParts1 = statisticsList.sumOf { it.producedParts1.get() }
-	val totalProducedParts2 = statisticsList.sumOf { it.producedParts2.get() }
-	val totalProcessedParts1 = statisticsList.sumOf { it.processedParts1.get() }
-	val totalProcessedParts2 = statisticsList.sumOf { it.processedParts2.get() }
-	val totalAssembledProducts = statisticsList.sumOf { it.assembledProducts.get() }
-	val totalPackedPackets = statisticsList.sumOf { it.packedPackets.get() }
-	val totalStoragePackets = statisticsList.sumOf { it.storagePackets.get() }
-	val totalSeconds = statisticsList.sumOf { it.seconds }
+		when (task.taskType) {
+			"Generator" -> {
+				val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
 
-	val numberOfFactories = statisticsList.size
+				if (random.nextBoolean()) {
+					partsType1++
+					queue.add(Task(currentTime + time, "Machine1"))
+				} else {
+					partsType2++
+					queue.add(Task(currentTime + time, "Machine2"))
+				}
 
-	val redColor = "\u001B[31m"
-	val resetColor = "\u001B[0m"
+				queue.add(Task(currentTime + time, "Generator"))
+			}
 
-	println(
-		"""
-		${redColor}Средняя статистика по $numberOfFactories заводам:
-		Создано деталей A: ${totalProducedParts1 / numberOfFactories},
-		Создано деталей B: ${totalProducedParts2 / numberOfFactories},
-		Обработано деталей A: ${totalProcessedParts1 / numberOfFactories},
-		Обработано деталей B: ${totalProcessedParts2 / numberOfFactories},
-		Собрано изделий: ${totalAssembledProducts / numberOfFactories},
-		Собрано партий: ${totalPackedPackets / numberOfFactories},
-		Партий на складе: ${totalStoragePackets / numberOfFactories},
-		Общее время (с): ${totalSeconds / numberOfFactories},
-		Время на производство одного изделия (с): ${totalSeconds / totalAssembledProducts}$resetColor
-		""".trimIndent()
-	)
-}
+			"Machine1" -> {
+				val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
 
-class Factory {
-	private val partsType1 = AtomicInteger(0)
-	private val partsType2 = AtomicInteger(0)
-	private val accumulatorPartsType1 = AtomicInteger(0)
-	private val accumulatorPartsType2 = AtomicInteger(0)
-	private val technoModuleParts = AtomicInteger(0)
-	private val packPlaceProducts = AtomicInteger(0)
-	private val packPlacePackets = AtomicInteger(0)
-	private val storagePackets = AtomicInteger(0)
+				if (partsType1 >= 1) {
+					partsType1--
+					accumulatorPartsType1++
 
-	private val random = Random()
-	private var currentTime = AtomicLong(0)
+					queue.add(Task(currentTime + time, "Transporter"))
+				}
 
-	val statistics = Statistics()
+				queue.add(Task(currentTime + time, "Machine1"))
+			}
 
-	fun run() {
-		val threads = mutableListOf(Thread { partGenerator() },
-			Thread { machine(1, partsType1, accumulatorPartsType1) },
-			Thread { machine(2, partsType2, accumulatorPartsType2) },
-			Thread { assembler() },
-			Thread { packer() },
-			Thread { transporter() })
-		threads.forEach { it.start() }
-		threads.forEach { it.join() }
+			"Machine2" -> {
+				val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
 
-		traceState()
-	}
+				if (partsType2 >= 1) {
+					partsType2--
+					accumulatorPartsType2++
 
-	private fun partGenerator() {
-		while (getStopRule()) {
-			Thread.sleep(1)
+					queue.add(Task(currentTime + time, "Transporter"))
+				}
 
-			val time = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toLong()
-			currentTime.getAndAdd(time)
+				queue.add(Task(currentTime + time, "Machine2"))
+			}
 
-			if (random.nextBoolean()) {
-				partsType1.incrementAndGet()
+			"Assembler" -> {
+				val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
 
-				statistics.incrementProducedParts(1)
-			} else {
-				partsType2.incrementAndGet()
+				if (technoModuleParts >= 5) {
+					technoModuleParts -= 5
+					packPlaceProducts += 1
 
-				statistics.incrementProducedParts(2)
+					queue.add(Task(currentTime + time, "Packer"))
+				}
+
+				queue.add(Task(currentTime + time, "Assembler"))
+			}
+
+			"Transporter" -> {
+				val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
+
+				if (accumulatorPartsType1 >= 3 && accumulatorPartsType2 >= 2) {
+					accumulatorPartsType1 -= 3
+					accumulatorPartsType2 -= 2
+
+					technoModuleParts += 5
+
+					queue.add(Task(currentTime + time, "Assembler"))
+				}
+
+				if (packPlacePackets >= 3) {
+					packPlacePackets -= 3
+					storagePackets += 3
+				}
+
+				queue.add(Task(currentTime + time, "Transporter"))
+			}
+
+			"Packer" -> {
+				val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
+
+				if (packPlaceProducts >= 8) {
+					packPlaceProducts -= 8
+					packPlacePackets += 1
+
+					queue.add(Task(currentTime + time, "Transporter"))
+				}
+
+				queue.add(Task(currentTime + time, "Packer"))
 			}
 		}
 	}
 
-	private fun machine(type: Int, parts: AtomicInteger, accumulator: AtomicInteger) {
-		while (getStopRule()) {
-			Thread.sleep(1)
-
-			if (parts.get() > 0) {
-				parts.decrementAndGet()
-
-				val time = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toLong()
-				currentTime.getAndAdd(time)
-
-				accumulator.incrementAndGet()
-
-				statistics.incrementProcessedParts(type)
-			}
-		}
-	}
-
-	private fun assembler() {
-		while (getStopRule()) {
-			Thread.sleep(1)
-
-			if (technoModuleParts.get() >= NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
-				repeat(NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
-					technoModuleParts.decrementAndGet()
-				}
-
-				val time = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toLong()
-				currentTime.getAndAdd(time)
-
-				packPlaceProducts.incrementAndGet()
-
-				statistics.incrementAssembledProducts()
-			}
-		}
-	}
-
-	private fun packer() {
-		while (getStopRule()) {
-			Thread.sleep(1)
-
-			if (packPlaceProducts.get() >= PACKET_SIZE) {
-				repeat(PACKET_SIZE) {
-					packPlaceProducts.decrementAndGet()
-				}
-
-				val time = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toLong()
-				currentTime.getAndAdd(time)
-
-				packPlacePackets.incrementAndGet()
-
-				statistics.incrementPackedPackets()
-			}
-		}
-	}
-
-	private fun transporter() {
-		while (getStopRule()) {
-			Thread.sleep(1)
-
-			if (accumulatorPartsType1.get() >= NUM_PARTS_TYPE_1 && accumulatorPartsType2.get() >= NUM_PARTS_TYPE_2) {
-				repeat(NUM_PARTS_TYPE_1) {
-					accumulatorPartsType1.decrementAndGet()
-				}
-				repeat(NUM_PARTS_TYPE_2) {
-					accumulatorPartsType2.decrementAndGet()
-				}
-
-				val time = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toLong()
-				currentTime.getAndAdd(time)
-
-				repeat(NUM_PARTS_TYPE_1 + NUM_PARTS_TYPE_2) {
-					technoModuleParts.incrementAndGet()
-				}
-			}
-
-			if (packPlacePackets.get() >= PACKETS) {
-				repeat(PACKETS) {
-					packPlacePackets.decrementAndGet()
-				}
-
-				val time = ((random.nextGaussian() + 0.5).coerceIn(0.0, 1.0) * 1000 + 500).toLong()
-				currentTime.getAndAdd(time)
-
-				repeat(PACKETS) {
-					storagePackets.incrementAndGet()
-
-					statistics.incrementStoragePackets()
-				}
-			}
-		}
-	}
-
-	private fun getStopRule(): Boolean = storagePackets.get() < 100
-
-	fun traceState() {
-		statistics.printStatistics(currentTime)
-		println()
-	}
-}
-
-class Statistics {
-	val producedParts1 = AtomicInteger(0)
-	val producedParts2 = AtomicInteger(0)
-	val processedParts1 = AtomicInteger(0)
-	val processedParts2 = AtomicInteger(0)
-	val assembledProducts = AtomicInteger(0)
-	val packedPackets = AtomicInteger(0)
-	val storagePackets = AtomicInteger(0)
-	var seconds = 0
-
-	fun incrementProducedParts(i: Int) {
-		if (i == 1) {
-			producedParts1.incrementAndGet()
-		} else {
-			producedParts2.incrementAndGet()
-		}
-	}
-
-	fun incrementProcessedParts(i: Int) {
-		if (i == 1) {
-			processedParts1.incrementAndGet()
-		} else {
-			processedParts2.incrementAndGet()
-		}
-	}
-
-	fun incrementAssembledProducts() {
-		assembledProducts.incrementAndGet()
-	}
-
-	fun incrementPackedPackets() {
-		packedPackets.incrementAndGet()
-	}
-
-	fun incrementStoragePackets() {
-		storagePackets.incrementAndGet()
-	}
-
-	fun printStatistics(currentTime: AtomicLong) {
-		// Измеренная руками погрешность вычислений в симуляции (не учитывает выигрыши в простоях)
-		seconds = (currentTime.get() / 2126.582278481013).toInt()
-
-		println(
-			"""
-			Статистика:
-			Создано деталей A: ${producedParts1.get()},
-			Создано деталей B: ${producedParts2.get()},
-			Обработано деталей A: ${processedParts1.get()},
-			Обработано деталей B: ${processedParts2.get()},
-			Собрано изделий: ${assembledProducts.get()},
-			Собрано партий: ${packedPackets.get()},
-			Партий на складе: ${storagePackets.get()},
-			Общее время (с): $seconds,
-			Время на производство одного изделия (с): ${seconds / assembledProducts.get()}
-			""".trimIndent()
-		)
-	}
+	println("Time: ${(currentTime / 1000).toInt()}s")
+	println("Time per product: ${(currentTime / (storagePackets * 8000)).toInt()}s")
 }
