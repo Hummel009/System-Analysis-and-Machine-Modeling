@@ -1,4 +1,4 @@
-package com.github.hummel.saamm.lab2
+package com.github.hummel.saamm.lab3
 
 import java.util.PriorityQueue
 import java.util.Random
@@ -10,13 +10,13 @@ const val PRODUCTS_FOR_PACKET = 8
 const val PACKETS_FOR_STORAGE = 3
 
 fun main() {
-	val statisticsArray = Array(10) { Statistics() }
-	val factoryArray = Array(10) {
-		val factory = Factory()
+	val statisticsArray = Array(100) { Statistics() }
+	val factoryArray = Array(100) {
+		val factory = Factory(1000)
 		factory.statistics = statisticsArray[it]
 		factory
 	}
-	val threadArray = Array(10) {
+	val threadArray = Array(100) {
 		Thread {
 			factoryArray[it].run()
 		}
@@ -25,10 +25,18 @@ fun main() {
 	threadArray.forEach { it.start() }
 	threadArray.forEach { it.join() }
 
-	printAverageStatistics(statisticsArray)
+	researchAverageStats(statisticsArray)
+
+	researchDistributionGraph(statisticsArray)
+
+	researchDistributionIdea(statisticsArray)
+
+	researchConfidenceInterval(statisticsArray)
+
+	researchAccuracy()
 }
 
-class Factory {
+class Factory(val stopRule: Int) {
 	private val random = Random()
 
 	private var partsType1 = 0
@@ -48,7 +56,7 @@ class Factory {
 
 		queue.add(Task(currentTime, TaskType.GENERATOR))
 
-		while (storagePackets <= 1000) {
+		while (storagePackets <= stopRule) {
 			val task = queue.poll()
 			currentTime = task.endTime
 
