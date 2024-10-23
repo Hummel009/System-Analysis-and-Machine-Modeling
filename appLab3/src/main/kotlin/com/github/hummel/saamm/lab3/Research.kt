@@ -6,7 +6,6 @@ import org.apache.commons.math3.stat.inference.KolmogorovSmirnovTest
 import org.knowm.xchart.BitmapEncoder
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
 import org.knowm.xchart.CategoryChart
-import org.knowm.xchart.SwingWrapper
 import org.knowm.xchart.XYChart
 import java.io.File
 import kotlin.math.ceil
@@ -47,8 +46,6 @@ fun researchAverageStats(stats: Array<Statistics>) {
 }
 
 fun researchDistributionGraph(statisticsArray: Array<Statistics>) {
-	val outputDir = mdIfNot("output")
-
 	val produceTimeList = statisticsArray.map { it.getProduceTime() }
 
 	val numberOfIntervals = ceil(log2(produceTimeList.size.toDouble())).toInt() + 1
@@ -73,6 +70,7 @@ fun researchDistributionGraph(statisticsArray: Array<Statistics>) {
 
 	chart.addSeries("Гистограмма", xData, yData)
 
+	val outputDir = mdIfNot("output")
 	BitmapEncoder.saveBitmap(chart, "./$outputDir/histogram", BitmapFormat.JPG)
 }
 
@@ -148,7 +146,8 @@ fun researchAccuracy() {
 
 	chart.addSeries("Точность", xData, yData)
 
-	SwingWrapper(chart).displayChart()
+	val outputDir = mdIfNot("output")
+	BitmapEncoder.saveBitmap(chart, "./$outputDir/accuracy_plot", BitmapFormat.JPG)
 }
 
 private fun mdIfNot(path: String): File {
