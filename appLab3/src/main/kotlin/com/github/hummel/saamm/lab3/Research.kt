@@ -111,7 +111,7 @@ fun researchConfidenceInterval(statisticsArray: Array<Statistics>) {
 }
 
 fun researchAccuracy() {
-	val maxRuns = 200
+	val maxRuns = 100
 	val step = 1
 	val averageResults = mutableListOf<Pair<Int, Double>>()
 
@@ -119,7 +119,7 @@ fun researchAccuracy() {
 		val statisticsArray = Array(runs) { Statistics() }
 
 		val factoryArray = Array(runs) {
-			val factory = Factory(ceil(runs / 5.0f).toInt())
+			val factory = Factory(runs)
 			factory.statistics = statisticsArray[it]
 			factory
 		}
