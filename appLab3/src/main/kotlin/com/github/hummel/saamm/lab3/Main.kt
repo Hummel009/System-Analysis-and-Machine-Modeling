@@ -55,6 +55,7 @@ fun printAverageStatistics(stats: Array<Statistics>) {
 		Партий на складе: $storagePackets,
 		Общее время (с): $duration,
 		Время на производство одного изделия (с): ${duration / (storagePackets * 8)}$resetColor
+		
 		""".trimIndent()
 	)
 }
@@ -171,8 +172,6 @@ class Factory {
 
 		statistics.duration = (currentTime / 1000).toDouble()
 		statistics.printStats()
-
-		println()
 	}
 }
 
@@ -199,6 +198,7 @@ class Statistics {
 			Партий на складе: $storagePackets,
 			Общее время (с): $duration,
 			Время на производство одного изделия (с): ${duration / (storagePackets * 8)}
+			
 			""".trimIndent()
 		)
 	}
