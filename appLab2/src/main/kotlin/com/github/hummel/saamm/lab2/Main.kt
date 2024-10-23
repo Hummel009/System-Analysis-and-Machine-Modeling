@@ -9,108 +9,157 @@ const val PARTS_2_FOR_PRODUCT = 2
 const val PRODUCTS_FOR_PACKET = 8
 const val PACKETS_FOR_STORAGE = 3
 
-private val random = Random()
-
 fun main() {
-	val queue = PriorityQueue<Task>(compareBy { it.endTime })
-	var currentTime = 0f
+	val factories = Array<Thread>(10) { Thread { Factory().run() } }
+	factories.forEach { it.start() }
+	factories.forEach { it.join() }
+}
 
-	queue.add(Task(currentTime, TaskType.GENERATOR))
+class Factory {
+	private val random = Random()
 
+	private var partsType1 = 0
+	private var partsType2 = 0
+	private var accumulatorPartsType1 = 0
+	private var accumulatorPartsType2 = 0
+	private var technoModuleParts = 0
+	private var packPlaceProducts = 0
+	private var packPlacePackets = 0
+	private var storagePackets = 0
+
+	var statistics = Statistics()
+
+	fun run() {
+		val queue = PriorityQueue<Task>(compareBy { it.endTime })
+		var currentTime = 0f
+
+		queue.add(Task(currentTime, TaskType.GENERATOR))
+
+		while (storagePackets <= 10) {
+			val task = queue.poll()
+			currentTime = task.endTime
+
+			when (task.taskType) {
+				TaskType.GENERATOR -> {
+					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
+
+					if (random.nextBoolean()) {
+						partsType1++
+						statistics.partsType1++
+						queue.add(Task(currentTime + time, TaskType.MACHINE_1))
+					} else {
+						partsType2++
+						statistics.partsType2++
+						queue.add(Task(currentTime + time, TaskType.MACHINE_2))
+					}
+
+					queue.add(Task(currentTime + time, TaskType.GENERATOR))
+				}
+
+				TaskType.MACHINE_1 -> {
+					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
+
+					if (partsType1 >= 1) {
+						partsType1--
+						accumulatorPartsType1++
+						statistics.accumulatorPartsType1++
+
+						queue.add(Task(currentTime + time, TaskType.TRANSPORTER))
+					}
+				}
+
+				TaskType.MACHINE_2 -> {
+					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
+
+					if (partsType2 >= 1) {
+						partsType2--
+						accumulatorPartsType2++
+						statistics.accumulatorPartsType2++
+
+						queue.add(Task(currentTime + time, TaskType.TRANSPORTER))
+					}
+				}
+
+				TaskType.ASSEMBLER -> {
+					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
+
+					if (technoModuleParts >= PARTS_1_FOR_PRODUCT + PARTS_2_FOR_PRODUCT) {
+						technoModuleParts -= PARTS_1_FOR_PRODUCT + PARTS_2_FOR_PRODUCT
+						packPlaceProducts++
+						statistics.packPlaceProducts++
+
+						queue.add(Task(currentTime + time, TaskType.PACKER))
+					}
+				}
+
+				TaskType.TRANSPORTER -> {
+					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
+
+					if (accumulatorPartsType1 >= PARTS_1_FOR_PRODUCT && accumulatorPartsType2 >= PARTS_2_FOR_PRODUCT) {
+						accumulatorPartsType1 -= PARTS_1_FOR_PRODUCT
+						accumulatorPartsType2 -= PARTS_2_FOR_PRODUCT
+
+						technoModuleParts += PARTS_1_FOR_PRODUCT + PARTS_2_FOR_PRODUCT
+
+						queue.add(Task(currentTime + time, TaskType.ASSEMBLER))
+					}
+
+					if (packPlacePackets >= PACKETS_FOR_STORAGE) {
+						packPlacePackets -= PACKETS_FOR_STORAGE
+						storagePackets += PACKETS_FOR_STORAGE
+						statistics.storagePackets += PACKETS_FOR_STORAGE
+					}
+				}
+
+				TaskType.PACKER -> {
+					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
+
+					if (packPlaceProducts >= PRODUCTS_FOR_PACKET) {
+						packPlaceProducts -= PRODUCTS_FOR_PACKET
+						packPlacePackets++
+						statistics.packPlacePackets++
+
+						queue.add(Task(currentTime + time, TaskType.TRANSPORTER))
+					}
+				}
+			}
+		}
+
+		statistics.duration = currentTime
+		statistics.printStats()
+
+		println()
+	}
+}
+
+class Statistics {
 	var partsType1 = 0
 	var partsType2 = 0
 	var accumulatorPartsType1 = 0
 	var accumulatorPartsType2 = 0
-	var technoModuleParts = 0
 	var packPlaceProducts = 0
 	var packPlacePackets = 0
 	var storagePackets = 0
+	var duration = 0.0f
 
-	while (storagePackets <= 10) {
-		val task = queue.poll()
-		currentTime = task.endTime
+	fun printStats() {
+		val seconds = (duration / 1000).toInt()
 
-		when (task.taskType) {
-			TaskType.GENERATOR -> {
-				val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
-
-				if (random.nextBoolean()) {
-					partsType1++
-					queue.add(Task(currentTime + time, TaskType.MACHINE_1))
-				} else {
-					partsType2++
-					queue.add(Task(currentTime + time, TaskType.MACHINE_2))
-				}
-
-				queue.add(Task(currentTime + time, TaskType.GENERATOR))
-			}
-
-			TaskType.MACHINE_1 -> {
-				val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
-
-				if (partsType1 >= 1) {
-					partsType1--
-					accumulatorPartsType1++
-
-					queue.add(Task(currentTime + time, TaskType.TRANSPORTER))
-				}
-			}
-
-			TaskType.MACHINE_2 -> {
-				val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
-
-				if (partsType2 >= 1) {
-					partsType2--
-					accumulatorPartsType2++
-
-					queue.add(Task(currentTime + time, TaskType.TRANSPORTER))
-				}
-			}
-
-			TaskType.ASSEMBLER -> {
-				val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
-
-				if (technoModuleParts >= PARTS_1_FOR_PRODUCT + PARTS_2_FOR_PRODUCT) {
-					technoModuleParts -= PARTS_1_FOR_PRODUCT + PARTS_2_FOR_PRODUCT
-					packPlaceProducts += 1
-
-					queue.add(Task(currentTime + time, TaskType.PACKER))
-				}
-			}
-
-			TaskType.TRANSPORTER -> {
-				val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
-
-				if (accumulatorPartsType1 >= PARTS_1_FOR_PRODUCT && accumulatorPartsType2 >= PARTS_2_FOR_PRODUCT) {
-					accumulatorPartsType1 -= PARTS_1_FOR_PRODUCT
-					accumulatorPartsType2 -= PARTS_2_FOR_PRODUCT
-
-					technoModuleParts += PARTS_1_FOR_PRODUCT + PARTS_2_FOR_PRODUCT
-
-					queue.add(Task(currentTime + time, TaskType.ASSEMBLER))
-				}
-
-				if (packPlacePackets >= PACKETS_FOR_STORAGE) {
-					packPlacePackets -= PACKETS_FOR_STORAGE
-					storagePackets += PACKETS_FOR_STORAGE
-				}
-			}
-
-			TaskType.PACKER -> {
-				val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
-
-				if (packPlaceProducts >= PRODUCTS_FOR_PACKET) {
-					packPlaceProducts -= PRODUCTS_FOR_PACKET
-					packPlacePackets += 1
-
-					queue.add(Task(currentTime + time, TaskType.TRANSPORTER))
-				}
-			}
-		}
+		println(
+			"""
+			Статистика:
+			Создано деталей A: $partsType1,
+			Создано деталей B: $partsType2,
+			Обработано деталей A: $accumulatorPartsType1,
+			Обработано деталей B: $accumulatorPartsType2,
+			Собрано изделий: $packPlaceProducts,
+			Собрано партий: $packPlacePackets,
+			Партий на складе: $storagePackets,
+			Общее время (с): $seconds,
+			Время на производство одного изделия (с): ${seconds / (storagePackets * 8)}
+			""".trimIndent()
+		)
 	}
-
-	println("Time: ${(currentTime / 1000).toInt()}s")
-	println("Time per product: ${(currentTime / (storagePackets * 8000)).toInt()}s")
 }
 
 data class Task(val endTime: Float, val taskType: TaskType)
