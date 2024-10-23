@@ -8,6 +8,7 @@ import org.knowm.xchart.BitmapEncoder.BitmapFormat
 import org.knowm.xchart.CategoryChart
 import org.knowm.xchart.XYChart
 import java.io.File
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.log2
 import kotlin.math.sqrt
@@ -142,7 +143,7 @@ fun researchAccuracy() {
 	chart.yAxisTitle = "Средняя точность"
 
 	val xData = averageResults.map { it.first.toDouble() }.toDoubleArray()
-	val yData = averageResults.map { it.second }.toDoubleArray()
+	val yData = averageResults.map { abs(it.second - 6.0) }.toDoubleArray()
 
 	chart.addSeries("Точность", xData, yData)
 
