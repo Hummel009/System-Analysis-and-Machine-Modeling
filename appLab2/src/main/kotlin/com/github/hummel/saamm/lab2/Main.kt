@@ -7,7 +7,7 @@ const val PARTS_1_FOR_PRODUCT = 3
 const val PARTS_2_FOR_PRODUCT = 2
 
 const val PRODUCTS_FOR_PACKET = 8
-const val PACKETS_FOR_STORAGE = 8
+const val PACKETS_FOR_STORAGE = 3
 
 private val random = Random()
 
@@ -54,8 +54,6 @@ fun main() {
 
 					queue.add(Task(currentTime + time, TaskType.TRANSPORTER))
 				}
-
-				queue.add(Task(currentTime + time, TaskType.MACHINE_1))
 			}
 
 			TaskType.MACHINE_2 -> {
@@ -67,8 +65,6 @@ fun main() {
 
 					queue.add(Task(currentTime + time, TaskType.TRANSPORTER))
 				}
-
-				queue.add(Task(currentTime + time, TaskType.MACHINE_2))
 			}
 
 			TaskType.ASSEMBLER -> {
@@ -80,8 +76,6 @@ fun main() {
 
 					queue.add(Task(currentTime + time, TaskType.PACKER))
 				}
-
-				queue.add(Task(currentTime + time, TaskType.ASSEMBLER))
 			}
 
 			TaskType.TRANSPORTER -> {
@@ -100,8 +94,6 @@ fun main() {
 					packPlacePackets -= PACKETS_FOR_STORAGE
 					storagePackets += PACKETS_FOR_STORAGE
 				}
-
-				queue.add(Task(currentTime + time, TaskType.TRANSPORTER))
 			}
 
 			TaskType.PACKER -> {
@@ -113,8 +105,6 @@ fun main() {
 
 					queue.add(Task(currentTime + time, TaskType.TRANSPORTER))
 				}
-
-				queue.add(Task(currentTime + time, TaskType.PACKER))
 			}
 		}
 	}
