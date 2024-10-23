@@ -13,8 +13,6 @@ val embed: Configuration by configurations.creating
 
 dependencies {
 	embed("org.jetbrains.kotlin:kotlin-stdlib:latest.release")
-	embed("org.jetbrains.kotlinx:kotlinx-coroutines-core:latest.release")
-	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:latest.release")
 }
 
 java {
