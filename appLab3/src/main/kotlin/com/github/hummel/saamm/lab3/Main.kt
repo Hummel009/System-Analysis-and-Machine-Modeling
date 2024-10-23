@@ -1,6 +1,7 @@
 package com.github.hummel.saamm.lab3
 
 import org.apache.commons.math3.distribution.NormalDistribution
+import org.apache.commons.math3.distribution.TDistribution
 import org.apache.commons.math3.stat.inference.KolmogorovSmirnovTest
 import org.knowm.xchart.BitmapEncoder
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
@@ -10,6 +11,7 @@ import java.util.PriorityQueue
 import java.util.Random
 import kotlin.math.ceil
 import kotlin.math.log2
+import kotlin.math.sqrt
 
 const val PARTS_1_FOR_PRODUCT = 3
 const val PARTS_2_FOR_PRODUCT = 2
@@ -65,11 +67,25 @@ fun main() {
 
 	val isNormal = isNormallyDistributed(averageTimes.toDoubleArray())
 
-	if (isNormal) {
-		println("Данные нормально распределены.")
-	} else {
-		println("Данные не нормально распределены.")
-	}
+	println("Данные${if (isNormal) " не" else ""} нормально распределены.")
+
+	val (from, to) = calculateConfidenceInterval(averageTimes.toDoubleArray())
+
+	println("Доверительный интервал: [$from, $to]")
+}
+
+fun calculateConfidenceInterval(data: DoubleArray): Pair<Double, Double> {
+	val n = data.size
+	val mean = data.average()
+	val stdDev = sqrt(data.map { (it - mean) * (it - mean) }.sum() / (n - 1))
+
+	val tDist = TDistribution((n - 1).toDouble())
+	val alpha = 0.05
+	val tValue = tDist.inverseCumulativeProbability(1 - alpha / 2)
+
+	val marginOfError = tValue * (stdDev / sqrt(n.toDouble()))
+
+	return mean - marginOfError to mean + marginOfError
 }
 
 fun isNormallyDistributed(data: DoubleArray): Boolean {
@@ -77,7 +93,7 @@ fun isNormallyDistributed(data: DoubleArray): Boolean {
 	val normalDistribution = NormalDistribution(6.0, 1.0)
 	val pValue = ksTest.kolmogorovSmirnovTest(normalDistribution, data)
 
-	val alpha = -0.05
+	val alpha = 0.05
 
 	return pValue > alpha
 }
