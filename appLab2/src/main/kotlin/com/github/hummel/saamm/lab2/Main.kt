@@ -10,9 +10,53 @@ const val PRODUCTS_FOR_PACKET = 8
 const val PACKETS_FOR_STORAGE = 3
 
 fun main() {
-	val factories = Array<Thread>(10) { Thread { Factory().run() } }
-	factories.forEach { it.start() }
-	factories.forEach { it.join() }
+	val statisticsArray = Array(10) { Statistics() }
+	val factoryArray = Array(10) {
+		val factory = Factory()
+		factory.statistics = statisticsArray[it]
+		factory
+	}
+	val threadArray = Array(10) {
+		Thread {
+			factoryArray[it].run()
+		}
+	}
+
+	threadArray.forEach { it.start() }
+	threadArray.forEach { it.join() }
+
+	printAverageStatistics(statisticsArray)
+}
+
+fun printAverageStatistics(statisticsList: Array<Statistics>) {
+	val quantity = statisticsList.size
+
+	val partsType1 = statisticsList.sumOf { it.partsType1 }.toDouble() / quantity
+	val partsType2 = statisticsList.sumOf { it.partsType2 }.toDouble() / quantity
+	val accumulatorPartsType1 = statisticsList.sumOf { it.accumulatorPartsType1 }.toDouble() / quantity
+	val accumulatorPartsType2 = statisticsList.sumOf { it.accumulatorPartsType2 }.toDouble() / quantity
+	val packPlaceProducts = statisticsList.sumOf { it.packPlaceProducts }.toDouble() / quantity
+	val packPlacePackets = statisticsList.sumOf { it.packPlacePackets }.toDouble() / quantity
+	val storagePackets = statisticsList.sumOf { it.storagePackets }.toDouble() / quantity
+	val duration = statisticsList.sumOf { it.duration } / quantity
+
+	val redColor = "\u001B[31m"
+	val resetColor = "\u001B[0m"
+
+	println(
+		"""
+		${redColor}Средняя статистика по $quantity заводам:
+		Создано деталей A: $partsType1,
+		Создано деталей B: $partsType2,
+		Обработано деталей A: $accumulatorPartsType1,
+		Обработано деталей B: $accumulatorPartsType2,
+		Собрано изделий: $packPlaceProducts,
+		Собрано партий: $packPlacePackets,
+		Партий на складе: $storagePackets,
+		Общее время (с): $duration,
+		Время на производство одного изделия (с): ${duration / (storagePackets * 8)}$resetColor
+		""".trimIndent()
+	)
 }
 
 class Factory {
@@ -31,7 +75,7 @@ class Factory {
 
 	fun run() {
 		val queue = PriorityQueue<Task>(compareBy { it.endTime })
-		var currentTime = 0f
+		var currentTime = 0.0
 
 		queue.add(Task(currentTime, TaskType.GENERATOR))
 
@@ -41,7 +85,7 @@ class Factory {
 
 			when (task.taskType) {
 				TaskType.GENERATOR -> {
-					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
+					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5) * 1000 + 500
 
 					if (random.nextBoolean()) {
 						partsType1++
@@ -57,7 +101,7 @@ class Factory {
 				}
 
 				TaskType.MACHINE_1 -> {
-					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
+					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5) * 1000 + 500
 
 					if (partsType1 >= 1) {
 						partsType1--
@@ -69,7 +113,7 @@ class Factory {
 				}
 
 				TaskType.MACHINE_2 -> {
-					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
+					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5) * 1000 + 500
 
 					if (partsType2 >= 1) {
 						partsType2--
@@ -81,7 +125,7 @@ class Factory {
 				}
 
 				TaskType.ASSEMBLER -> {
-					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
+					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5) * 1000 + 500
 
 					if (technoModuleParts >= PARTS_1_FOR_PRODUCT + PARTS_2_FOR_PRODUCT) {
 						technoModuleParts -= PARTS_1_FOR_PRODUCT + PARTS_2_FOR_PRODUCT
@@ -93,7 +137,7 @@ class Factory {
 				}
 
 				TaskType.TRANSPORTER -> {
-					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
+					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5) * 1000 + 500
 
 					if (accumulatorPartsType1 >= PARTS_1_FOR_PRODUCT && accumulatorPartsType2 >= PARTS_2_FOR_PRODUCT) {
 						accumulatorPartsType1 -= PARTS_1_FOR_PRODUCT
@@ -112,7 +156,7 @@ class Factory {
 				}
 
 				TaskType.PACKER -> {
-					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5).toFloat() * 1000 + 500
+					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5) * 1000 + 500
 
 					if (packPlaceProducts >= PRODUCTS_FOR_PACKET) {
 						packPlaceProducts -= PRODUCTS_FOR_PACKET
@@ -125,7 +169,7 @@ class Factory {
 			}
 		}
 
-		statistics.duration = currentTime
+		statistics.duration = (currentTime / 1000).toDouble()
 		statistics.printStats()
 
 		println()
@@ -140,11 +184,9 @@ class Statistics {
 	var packPlaceProducts = 0
 	var packPlacePackets = 0
 	var storagePackets = 0
-	var duration = 0.0f
+	var duration = 0.0
 
 	fun printStats() {
-		val seconds = (duration / 1000).toInt()
-
 		println(
 			"""
 			Статистика:
@@ -155,14 +197,14 @@ class Statistics {
 			Собрано изделий: $packPlaceProducts,
 			Собрано партий: $packPlacePackets,
 			Партий на складе: $storagePackets,
-			Общее время (с): $seconds,
-			Время на производство одного изделия (с): ${seconds / (storagePackets * 8)}
+			Общее время (с): $duration,
+			Время на производство одного изделия (с): ${duration / (storagePackets * 8)}
 			""".trimIndent()
 		)
 	}
 }
 
-data class Task(val endTime: Float, val taskType: TaskType)
+data class Task(val endTime: Double, val taskType: TaskType)
 
 enum class TaskType {
 	GENERATOR, MACHINE_1, MACHINE_2, ASSEMBLER, TRANSPORTER, PACKER
