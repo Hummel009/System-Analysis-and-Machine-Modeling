@@ -143,7 +143,7 @@ fun researchAccuracy() {
 	chart.yAxisTitle = "Средняя точность"
 
 	val xData = averageResults.map { it.first.toDouble() }.toDoubleArray()
-	val yData = averageResults.map { abs(it.second - 6.0) }.toDoubleArray()
+	val yData = averageResults.map { 100.0f - (abs(it.second - 6.0) / 6.0f * 100.0f) }.toDoubleArray()
 
 	chart.addSeries("Точность", xData, yData)
 
