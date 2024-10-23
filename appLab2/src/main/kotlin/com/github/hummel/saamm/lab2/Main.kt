@@ -28,38 +28,6 @@ fun main() {
 	printAverageStatistics(statisticsArray)
 }
 
-fun printAverageStatistics(stats: Array<Statistics>) {
-	val quantity = stats.size
-
-	val partsType1 = stats.sumOf { it.partsType1 }.toDouble() / quantity
-	val partsType2 = stats.sumOf { it.partsType2 }.toDouble() / quantity
-	val accumulatorPartsType1 = stats.sumOf { it.accumulatorPartsType1 }.toDouble() / quantity
-	val accumulatorPartsType2 = stats.sumOf { it.accumulatorPartsType2 }.toDouble() / quantity
-	val packPlaceProducts = stats.sumOf { it.packPlaceProducts }.toDouble() / quantity
-	val packPlacePackets = stats.sumOf { it.packPlacePackets }.toDouble() / quantity
-	val storagePackets = stats.sumOf { it.storagePackets }.toDouble() / quantity
-	val duration = stats.sumOf { it.duration } / quantity
-
-	val redColor = "\u001B[31m"
-	val resetColor = "\u001B[0m"
-
-	println(
-		"""
-		${redColor}Средняя статистика по $quantity заводам:
-		Создано деталей A: $partsType1,
-		Создано деталей B: $partsType2,
-		Обработано деталей A: $accumulatorPartsType1,
-		Обработано деталей B: $accumulatorPartsType2,
-		Собрано изделий: $packPlaceProducts,
-		Собрано партий: $packPlacePackets,
-		Партий на складе: $storagePackets,
-		Общее время (с): $duration,
-		Время на производство одного изделия (с): ${duration / (storagePackets * 8)}$resetColor
-		
-		""".trimIndent()
-	)
-}
-
 class Factory {
 	private val random = Random()
 
@@ -171,7 +139,6 @@ class Factory {
 		}
 
 		statistics.duration = (currentTime / 1000).toDouble()
-		statistics.printStats()
 	}
 }
 
@@ -185,23 +152,7 @@ class Statistics {
 	var storagePackets = 0
 	var duration = 0.0
 
-	fun printStats() {
-		println(
-			"""
-			Статистика:
-			Создано деталей A: $partsType1,
-			Создано деталей B: $partsType2,
-			Обработано деталей A: $accumulatorPartsType1,
-			Обработано деталей B: $accumulatorPartsType2,
-			Собрано изделий: $packPlaceProducts,
-			Собрано партий: $packPlacePackets,
-			Партий на складе: $storagePackets,
-			Общее время (с): $duration,
-			Время на производство одного изделия (с): ${duration / (storagePackets * 8)}
-			
-			""".trimIndent()
-		)
-	}
+	fun getProduceTime() = duration / (storagePackets * 8)
 }
 
 data class Task(val endTime: Double, val taskType: TaskType)
