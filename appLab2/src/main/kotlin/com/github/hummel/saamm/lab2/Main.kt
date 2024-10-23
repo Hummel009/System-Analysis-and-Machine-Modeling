@@ -80,7 +80,7 @@ class Factory {
 
 		queue.add(Task(currentTime, TaskType.GENERATOR))
 
-		while (storagePackets <= 10000) {
+		while (storagePackets <= 1000) {
 			val task = queue.poll()
 			currentTime = task.endTime
 
