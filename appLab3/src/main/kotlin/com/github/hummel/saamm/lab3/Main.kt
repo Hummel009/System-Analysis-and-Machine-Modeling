@@ -1,5 +1,7 @@
 package com.github.hummel.saamm.lab3
 
+import org.apache.commons.math3.distribution.NormalDistribution
+import org.apache.commons.math3.stat.inference.KolmogorovSmirnovTest
 import org.knowm.xchart.BitmapEncoder
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
 import org.knowm.xchart.CategoryChart
@@ -60,6 +62,24 @@ fun main() {
 	chart.addSeries("Гистограмма", xData, yData)
 
 	BitmapEncoder.saveBitmap(chart, "./$outputDir/histogram", BitmapFormat.JPG)
+
+	val isNormal = isNormallyDistributed(averageTimes.toDoubleArray())
+
+	if (isNormal) {
+		println("Данные нормально распределены.")
+	} else {
+		println("Данные не нормально распределены.")
+	}
+}
+
+fun isNormallyDistributed(data: DoubleArray): Boolean {
+	val ksTest = KolmogorovSmirnovTest()
+	val normalDistribution = NormalDistribution(6.0, 1.0)
+	val pValue = ksTest.kolmogorovSmirnovTest(normalDistribution, data)
+
+	val alpha = -0.05
+
+	return pValue > alpha
 }
 
 fun printAverageStatistics(stats: Array<Statistics>) {
