@@ -33,10 +33,10 @@ fun main() {
 
 	researchConfidenceInterval(statisticsArray)
 
-	researchAccuracyGraph()
+	researchAccuracy()
 }
 
-class Factory(val rule: Int) {
+class Factory(val stopRule: Int) {
 	private val random = Random()
 
 	private var partsType1 = 0
@@ -56,7 +56,7 @@ class Factory(val rule: Int) {
 
 		queue.add(Task(currentTime, TaskType.GENERATOR))
 
-		while (storagePackets <= rule) {
+		while (storagePackets <= stopRule) {
 			val task = queue.poll()
 			currentTime = task.endTime
 
@@ -147,7 +147,6 @@ class Factory(val rule: Int) {
 		}
 
 		statistics.duration = (currentTime / 1000).toDouble()
-		//statistics.printStats()
 	}
 }
 
@@ -160,6 +159,8 @@ class Statistics {
 	var packPlacePackets = 0
 	var storagePackets = 0
 	var duration = 0.0
+
+	fun getProduceTime() = duration / (storagePackets * 8)
 }
 
 data class Task(val endTime: Double, val taskType: TaskType)

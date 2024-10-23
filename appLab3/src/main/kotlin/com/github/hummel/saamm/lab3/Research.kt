@@ -6,6 +6,8 @@ import org.apache.commons.math3.stat.inference.KolmogorovSmirnovTest
 import org.knowm.xchart.BitmapEncoder
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
 import org.knowm.xchart.CategoryChart
+import org.knowm.xchart.SwingWrapper
+import org.knowm.xchart.XYChart
 import java.io.File
 import kotlin.math.ceil
 import kotlin.math.log2
@@ -22,6 +24,7 @@ fun researchAverageStats(stats: Array<Statistics>) {
 	val packPlacePackets = stats.sumOf { it.packPlacePackets }.toDouble() / quantity
 	val storagePackets = stats.sumOf { it.storagePackets }.toDouble() / quantity
 	val duration = stats.sumOf { it.duration } / quantity
+	val produceTime = stats.sumOf { it.getProduceTime() } / quantity
 
 	val redColor = "\u001B[31m"
 	val resetColor = "\u001B[0m"
@@ -37,39 +40,25 @@ fun researchAverageStats(stats: Array<Statistics>) {
 		Собрано партий: $packPlacePackets,
 		Партий на складе: $storagePackets,
 		Общее время (с): $duration,
-		Время на производство одного изделия (с): ${duration / (storagePackets * 8)}$resetColor
+		Время на производство одного изделия (с): ${produceTime}$resetColor
 		
 		""".trimIndent()
 	)
 }
 
-fun researchDistributionIdea(statisticsArray: Array<Statistics>) {
-	val timesPerProduct = statisticsArray.map { it.duration / (it.storagePackets * 8) }.toDoubleArray()
-
-	val ksTest = KolmogorovSmirnovTest()
-	val normalDistribution = NormalDistribution(6.0, 1.0)
-	val pValue = ksTest.kolmogorovSmirnovTest(normalDistribution, timesPerProduct)
-
-	val alpha = 0.05
-
-	val isNormal = pValue > alpha
-
-	println("Данные${if (isNormal) " не" else ""} нормально распределены.")
-}
-
 fun researchDistributionGraph(statisticsArray: Array<Statistics>) {
 	val outputDir = mdIfNot("output")
 
-	val timesPerProduct = statisticsArray.map { it.duration / (it.storagePackets * 8) }
+	val produceTimeList = statisticsArray.map { it.getProduceTime() }
 
-	val numberOfIntervals = ceil(log2(timesPerProduct.size.toDouble())).toInt() + 1
+	val numberOfIntervals = ceil(log2(produceTimeList.size.toDouble())).toInt() + 1
 
-	val minValue = timesPerProduct.minOrNull() ?: 0.0
-	val maxValue = timesPerProduct.maxOrNull() ?: 1.0
+	val minValue = produceTimeList.minOrNull() ?: 0.0
+	val maxValue = produceTimeList.maxOrNull() ?: 1.0
 	val intervalSize = (maxValue - minValue) / numberOfIntervals
 
 	val histogram = IntArray(numberOfIntervals)
-	timesPerProduct.forEach { time ->
+	produceTimeList.forEach { time ->
 		val index = ((time - minValue) / intervalSize).toInt().coerceIn(0, numberOfIntervals - 1)
 		histogram[index]++
 	}
@@ -87,12 +76,30 @@ fun researchDistributionGraph(statisticsArray: Array<Statistics>) {
 	BitmapEncoder.saveBitmap(chart, "./$outputDir/histogram", BitmapFormat.JPG)
 }
 
-fun researchConfidenceInterval(statisticsArray: Array<Statistics>) {
-	val timesPerProduct = statisticsArray.map { it.duration / (it.storagePackets * 8) }
+fun researchDistributionIdea(statisticsArray: Array<Statistics>) {
+	val produceTimeList = statisticsArray.map { it.getProduceTime() }
 
-	val n = timesPerProduct.size
-	val mean = timesPerProduct.average()
-	val stdDev = sqrt(timesPerProduct.map { (it - mean) * (it - mean) }.sum() / (n - 1))
+	val n = produceTimeList.size
+	val mean = produceTimeList.average()
+	val stdDev = sqrt(produceTimeList.map { (it - mean) * (it - mean) }.sum() / (n - 1))
+
+	val ksTest = KolmogorovSmirnovTest()
+	val normalDistribution = NormalDistribution(mean, stdDev)
+	val pValue = ksTest.kolmogorovSmirnovTest(normalDistribution, produceTimeList.toDoubleArray())
+
+	val alpha = 0.05
+
+	val isNormal = pValue > alpha
+
+	println("Данные${if (isNormal) "" else " не"} нормально распределены.")
+}
+
+fun researchConfidenceInterval(statisticsArray: Array<Statistics>) {
+	val produceTimeList = statisticsArray.map { it.getProduceTime() }
+
+	val n = produceTimeList.size
+	val mean = produceTimeList.average()
+	val stdDev = sqrt(produceTimeList.map { (it - mean) * (it - mean) }.sum() / (n - 1))
 
 	val tDist = TDistribution((n - 1).toDouble())
 	val alpha = 0.05
@@ -105,17 +112,16 @@ fun researchConfidenceInterval(statisticsArray: Array<Statistics>) {
 	println("Доверительный интервал: [$from, $to]")
 }
 
-fun researchAccuracyGraph() {
+fun researchAccuracy() {
 	val maxRuns = 200
 	val step = 1
+	val averageResults = mutableListOf<Pair<Int, Double>>()
 
-	val iterations = mutableListOf<Int>()
-	val stdDeviations = mutableListOf<Double>()
-
-	for (runs in 1..maxRuns step step) {
+	for (runs in step..maxRuns step step) {
 		val statisticsArray = Array(runs) { Statistics() }
+
 		val factoryArray = Array(runs) {
-			val factory = Factory(step)
+			val factory = Factory(ceil(runs / 5.0f).toInt())
 			factory.statistics = statisticsArray[it]
 			factory
 		}
@@ -128,23 +134,21 @@ fun researchAccuracyGraph() {
 		threadArray.forEach { it.start() }
 		threadArray.forEach { it.join() }
 
-		val times = statisticsArray.map { it.duration / (it.storagePackets * 8) }
-
-		val averageTime = times.average()
-		val stdDev = sqrt(times.map { (it - averageTime) * (it - averageTime) }.sum() / (runs - 1))
-
-		iterations.add(runs)
-		stdDeviations.add(stdDev)
+		val averageAccuracy = statisticsArray.map { it.getProduceTime() }.average()
+		averageResults.add(runs to averageAccuracy)
 	}
 
-	val chart = CategoryChart(800, 600)
-	chart.title = "Зависимость стандартного отклонения от количества итераций"
-	chart.xAxisTitle = "Количество итераций"
-	chart.yAxisTitle = "Стандартное отклонение"
+	val chart = XYChart(1600, 900)
+	chart.title = "Зависимость точности от количества прогонов"
+	chart.xAxisTitle = "Количество прогонов"
+	chart.yAxisTitle = "Средняя точность"
 
-	chart.addSeries("Погрешность", iterations.map { it.toDouble() }.toDoubleArray(), stdDeviations.toDoubleArray())
+	val xData = averageResults.map { it.first.toDouble() }.toDoubleArray()
+	val yData = averageResults.map { it.second }.toDoubleArray()
 
-	BitmapEncoder.saveBitmap(chart, "./output/accuracy_plot", BitmapFormat.JPG)
+	chart.addSeries("Точность", xData, yData)
+
+	SwingWrapper(chart).displayChart()
 }
 
 private fun mdIfNot(path: String): File {
