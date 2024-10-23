@@ -1,17 +1,7 @@
 package com.github.hummel.saamm.lab3
 
-import org.apache.commons.math3.distribution.NormalDistribution
-import org.apache.commons.math3.distribution.TDistribution
-import org.apache.commons.math3.stat.inference.KolmogorovSmirnovTest
-import org.knowm.xchart.BitmapEncoder
-import org.knowm.xchart.BitmapEncoder.BitmapFormat
-import org.knowm.xchart.CategoryChart
-import java.io.File
 import java.util.PriorityQueue
 import java.util.Random
-import kotlin.math.ceil
-import kotlin.math.log2
-import kotlin.math.sqrt
 
 const val PARTS_1_FOR_PRODUCT = 3
 const val PARTS_2_FOR_PRODUCT = 2
@@ -20,8 +10,6 @@ const val PRODUCTS_FOR_PACKET = 8
 const val PACKETS_FOR_STORAGE = 3
 
 fun main() {
-	val outputDir = mdIfNot("output")
-
 	val statisticsArray = Array(100) { Statistics() }
 	val factoryArray = Array(100) {
 		val factory = Factory()
@@ -37,97 +25,13 @@ fun main() {
 	threadArray.forEach { it.start() }
 	threadArray.forEach { it.join() }
 
-	printAverageStatistics(statisticsArray)
+	researchAverageStats(statisticsArray)
 
-	val averageTimes = statisticsArray.map { it.duration / (it.storagePackets * 8) }
+	researchDistributionGraph(statisticsArray)
 
-	val numberOfIntervals = ceil(log2(averageTimes.size.toDouble())).toInt() + 1
+	researchDistributionIdea(statisticsArray)
 
-	val minValue = averageTimes.minOrNull() ?: 0.0
-	val maxValue = averageTimes.maxOrNull() ?: 1.0
-	val intervalSize = (maxValue - minValue) / numberOfIntervals
-
-	val histogram = IntArray(numberOfIntervals)
-	averageTimes.forEach { time ->
-		val index = ((time - minValue) / intervalSize).toInt().coerceIn(0, numberOfIntervals - 1)
-		histogram[index]++
-	}
-
-	val chart = CategoryChart(1600, 900)
-	chart.title = "Гистограмма времени изготовления деталей"
-	chart.xAxisTitle = "Время (с)"
-	chart.yAxisTitle = "Количество"
-
-	val xData = DoubleArray(numberOfIntervals) { minValue + it * intervalSize + intervalSize / 2 }
-	val yData = histogram.map { it.toDouble() }.toDoubleArray()
-
-	chart.addSeries("Гистограмма", xData, yData)
-
-	BitmapEncoder.saveBitmap(chart, "./$outputDir/histogram", BitmapFormat.JPG)
-
-	val isNormal = isNormallyDistributed(averageTimes.toDoubleArray())
-
-	println("Данные${if (isNormal) " не" else ""} нормально распределены.")
-
-	val (from, to) = calculateConfidenceInterval(averageTimes.toDoubleArray())
-
-	println("Доверительный интервал: [$from, $to]")
-}
-
-fun calculateConfidenceInterval(data: DoubleArray): Pair<Double, Double> {
-	val n = data.size
-	val mean = data.average()
-	val stdDev = sqrt(data.map { (it - mean) * (it - mean) }.sum() / (n - 1))
-
-	val tDist = TDistribution((n - 1).toDouble())
-	val alpha = 0.05
-	val tValue = tDist.inverseCumulativeProbability(1 - alpha / 2)
-
-	val marginOfError = tValue * (stdDev / sqrt(n.toDouble()))
-
-	return mean - marginOfError to mean + marginOfError
-}
-
-fun isNormallyDistributed(data: DoubleArray): Boolean {
-	val ksTest = KolmogorovSmirnovTest()
-	val normalDistribution = NormalDistribution(6.0, 1.0)
-	val pValue = ksTest.kolmogorovSmirnovTest(normalDistribution, data)
-
-	val alpha = 0.05
-
-	return pValue > alpha
-}
-
-fun printAverageStatistics(stats: Array<Statistics>) {
-	val quantity = stats.size
-
-	val partsType1 = stats.sumOf { it.partsType1 }.toDouble() / quantity
-	val partsType2 = stats.sumOf { it.partsType2 }.toDouble() / quantity
-	val accumulatorPartsType1 = stats.sumOf { it.accumulatorPartsType1 }.toDouble() / quantity
-	val accumulatorPartsType2 = stats.sumOf { it.accumulatorPartsType2 }.toDouble() / quantity
-	val packPlaceProducts = stats.sumOf { it.packPlaceProducts }.toDouble() / quantity
-	val packPlacePackets = stats.sumOf { it.packPlacePackets }.toDouble() / quantity
-	val storagePackets = stats.sumOf { it.storagePackets }.toDouble() / quantity
-	val duration = stats.sumOf { it.duration } / quantity
-
-	val redColor = "\u001B[31m"
-	val resetColor = "\u001B[0m"
-
-	println(
-		"""
-		${redColor}Средняя статистика по $quantity заводам:
-		Создано деталей A: $partsType1,
-		Создано деталей B: $partsType2,
-		Обработано деталей A: $accumulatorPartsType1,
-		Обработано деталей B: $accumulatorPartsType2,
-		Собрано изделий: $packPlaceProducts,
-		Собрано партий: $packPlacePackets,
-		Партий на складе: $storagePackets,
-		Общее время (с): $duration,
-		Время на производство одного изделия (с): ${duration / (storagePackets * 8)}$resetColor
-		
-		""".trimIndent()
-	)
+	researchConfidenceInterval(statisticsArray)
 }
 
 class Factory {
@@ -260,12 +164,4 @@ data class Task(val endTime: Double, val taskType: TaskType)
 
 enum class TaskType {
 	GENERATOR, MACHINE_1, MACHINE_2, ASSEMBLER, TRANSPORTER, PACKER
-}
-
-private fun mdIfNot(path: String): File {
-	val soundsDir = File(path)
-	if (!soundsDir.exists()) {
-		soundsDir.mkdirs()
-	}
-	return soundsDir
 }
