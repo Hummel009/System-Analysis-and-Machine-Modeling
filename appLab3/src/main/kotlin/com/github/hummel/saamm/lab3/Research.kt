@@ -105,6 +105,48 @@ fun researchConfidenceInterval(statisticsArray: Array<Statistics>) {
 	println("Доверительный интервал: [$from, $to]")
 }
 
+fun researchAccuracyGraph() {
+	val maxRuns = 200
+	val step = 1
+
+	val iterations = mutableListOf<Int>()
+	val stdDeviations = mutableListOf<Double>()
+
+	for (runs in 1..maxRuns step step) {
+		val statisticsArray = Array(runs) { Statistics() }
+		val factoryArray = Array(runs) {
+			val factory = Factory(step)
+			factory.statistics = statisticsArray[it]
+			factory
+		}
+		val threadArray = Array(runs) {
+			Thread {
+				factoryArray[it].run()
+			}
+		}
+
+		threadArray.forEach { it.start() }
+		threadArray.forEach { it.join() }
+
+		val times = statisticsArray.map { it.duration / (it.storagePackets * 8) }
+
+		val averageTime = times.average()
+		val stdDev = sqrt(times.map { (it - averageTime) * (it - averageTime) }.sum() / (runs - 1))
+
+		iterations.add(runs)
+		stdDeviations.add(stdDev)
+	}
+
+	val chart = CategoryChart(800, 600)
+	chart.title = "Зависимость стандартного отклонения от количества итераций"
+	chart.xAxisTitle = "Количество итераций"
+	chart.yAxisTitle = "Стандартное отклонение"
+
+	chart.addSeries("Погрешность", iterations.map { it.toDouble() }.toDoubleArray(), stdDeviations.toDoubleArray())
+
+	BitmapEncoder.saveBitmap(chart, "./output/accuracy_plot", BitmapFormat.JPG)
+}
+
 private fun mdIfNot(path: String): File {
 	val soundsDir = File(path)
 	if (!soundsDir.exists()) {

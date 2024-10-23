@@ -12,7 +12,7 @@ const val PACKETS_FOR_STORAGE = 3
 fun main() {
 	val statisticsArray = Array(100) { Statistics() }
 	val factoryArray = Array(100) {
-		val factory = Factory()
+		val factory = Factory(1000)
 		factory.statistics = statisticsArray[it]
 		factory
 	}
@@ -32,9 +32,11 @@ fun main() {
 	researchDistributionIdea(statisticsArray)
 
 	researchConfidenceInterval(statisticsArray)
+
+	researchAccuracyGraph()
 }
 
-class Factory {
+class Factory(val rule: Int) {
 	private val random = Random()
 
 	private var partsType1 = 0
@@ -54,7 +56,7 @@ class Factory {
 
 		queue.add(Task(currentTime, TaskType.GENERATOR))
 
-		while (storagePackets <= 1000) {
+		while (storagePackets <= rule) {
 			val task = queue.poll()
 			currentTime = task.endTime
 
