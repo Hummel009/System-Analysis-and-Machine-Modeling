@@ -28,17 +28,17 @@ fun main() {
 	printAverageStatistics(statisticsArray)
 }
 
-fun printAverageStatistics(statisticsList: Array<Statistics>) {
-	val quantity = statisticsList.size
+fun printAverageStatistics(stats: Array<Statistics>) {
+	val quantity = stats.size
 
-	val partsType1 = statisticsList.sumOf { it.partsType1 }.toDouble() / quantity
-	val partsType2 = statisticsList.sumOf { it.partsType2 }.toDouble() / quantity
-	val accumulatorPartsType1 = statisticsList.sumOf { it.accumulatorPartsType1 }.toDouble() / quantity
-	val accumulatorPartsType2 = statisticsList.sumOf { it.accumulatorPartsType2 }.toDouble() / quantity
-	val packPlaceProducts = statisticsList.sumOf { it.packPlaceProducts }.toDouble() / quantity
-	val packPlacePackets = statisticsList.sumOf { it.packPlacePackets }.toDouble() / quantity
-	val storagePackets = statisticsList.sumOf { it.storagePackets }.toDouble() / quantity
-	val duration = statisticsList.sumOf { it.duration } / quantity
+	val partsType1 = stats.sumOf { it.partsType1 }.toDouble() / quantity
+	val partsType2 = stats.sumOf { it.partsType2 }.toDouble() / quantity
+	val accumulatorPartsType1 = stats.sumOf { it.accumulatorPartsType1 }.toDouble() / quantity
+	val accumulatorPartsType2 = stats.sumOf { it.accumulatorPartsType2 }.toDouble() / quantity
+	val packPlaceProducts = stats.sumOf { it.packPlaceProducts }.toDouble() / quantity
+	val packPlacePackets = stats.sumOf { it.packPlacePackets }.toDouble() / quantity
+	val storagePackets = stats.sumOf { it.storagePackets }.toDouble() / quantity
+	val duration = stats.sumOf { it.duration } / quantity
 
 	val redColor = "\u001B[31m"
 	val resetColor = "\u001B[0m"
