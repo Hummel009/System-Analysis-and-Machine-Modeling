@@ -189,14 +189,14 @@ fun researchAccuracy(statisticsArrayArray: List<Array<Statistics>>) {
 fun makeOneHundredLaunchs(): Array<Array<Statistics>> {
 	val statisticsArrayArray = mutableListOf<Array<Statistics>>()
 
-	for (i in 0..99) {
-		val statisticsArray = Array(i + 1) { Statistics() }
-		val factoryArray = Array(i + 1) {
+	for (i in 1..100) {
+		val statisticsArray = Array(i) { Statistics() }
+		val factoryArray = Array(i) {
 			val factory = Factory(1000)
 			factory.statistics = statisticsArray[it]
 			factory
 		}
-		val threadArray = Array(i + 1) {
+		val threadArray = Array(i) {
 			Thread {
 				factoryArray[it].run()
 			}
