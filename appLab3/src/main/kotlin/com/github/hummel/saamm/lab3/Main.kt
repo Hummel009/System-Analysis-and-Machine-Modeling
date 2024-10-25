@@ -10,30 +10,17 @@ const val PRODUCTS_FOR_PACKET = 8
 const val PACKETS_FOR_STORAGE = 3
 
 fun main() {
-	val statisticsArray = Array(100) { Statistics() }
-	val factoryArray = Array(100) {
-		val factory = Factory(1000)
-		factory.statistics = statisticsArray[it]
-		factory
-	}
-	val threadArray = Array(100) {
-		Thread {
-			factoryArray[it].run()
-		}
-	}
+	val statisticsArrayArray = makeOneHundredLaunchs()
 
-	threadArray.forEach { it.start() }
-	threadArray.forEach { it.join() }
+	researchAverageStats(statisticsArrayArray[99].copyOf())
 
-	researchAverageStats(statisticsArray)
+	researchDistributionGraph(statisticsArrayArray[99].copyOf())
 
-	researchDistributionGraph(statisticsArray)
+	researchDistributionIdea(statisticsArrayArray[99].copyOf())
 
-	researchDistributionIdea(statisticsArray)
+	researchConfidenceInterval(statisticsArrayArray.take(50))
 
-	researchConfidenceInterval(statisticsArray)
-
-	researchAccuracy()
+	researchAccuracy(statisticsArrayArray.take(100))
 }
 
 class Factory(val stopRule: Int) {

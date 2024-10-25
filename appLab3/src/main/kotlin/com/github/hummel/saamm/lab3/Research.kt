@@ -7,6 +7,8 @@ import org.knowm.xchart.BitmapEncoder
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
 import org.knowm.xchart.CategoryChart
 import org.knowm.xchart.XYChart
+import org.knowm.xchart.XYSeries
+import java.awt.Color
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -93,38 +95,108 @@ fun researchDistributionIdea(statisticsArray: Array<Statistics>) {
 	println("Данные${if (isNormal) "" else " не"} нормально распределены.")
 }
 
-fun researchConfidenceInterval(statisticsArray: Array<Statistics>) {
-	val produceTimeList = statisticsArray.map { it.getProduceTime() }
+fun researchConfidenceInterval(statisticsArrayArray: List<Array<Statistics>>) {
+	val simulations = statisticsArrayArray.lastIndex
+	val range = 1..simulations
 
-	val n = produceTimeList.size
-	val mean = produceTimeList.average()
-	val stdDev = sqrt(produceTimeList.map { (it - mean) * (it - mean) }.sum() / (n - 1))
+	val intervals = mutableListOf<Pair<Double, Double>>()
+	val means = mutableListOf<Double>()
 
-	val tDist = TDistribution((n - 1).toDouble())
-	val alpha = 0.05
-	val tValue = tDist.inverseCumulativeProbability(1 - alpha / 2)
+	for (i in range) {
+		val statisticsArray = statisticsArrayArray[i]
 
-	val marginOfError = tValue * (stdDev / sqrt(n.toDouble()))
+		val produceTimeList = statisticsArray.map { it.getProduceTime() }
 
-	val (from, to) = mean - marginOfError to mean + marginOfError
+		val n = produceTimeList.size
+		val mean = produceTimeList.average()
+		val stdDev = sqrt(produceTimeList.map { (it - mean) * (it - mean) }.sum() / (n - 1.0))
 
-	println("Доверительный интервал: [$from, $to]")
+		val tDist = TDistribution(n - 1.0)
+		val alpha = 0.05
+		val tValue = tDist.inverseCumulativeProbability(1 - alpha / 2)
+
+		val marginOfError = tValue * (stdDev / sqrt(n.toDouble()))
+
+		val (from, to) = mean - marginOfError to mean + marginOfError
+
+		intervals.add(from to to)
+		means.add(mean)
+	}
+
+	val chart = XYChart(1600, 900)
+	chart.title = "Доверительные интервалы и средние значения"
+	chart.xAxisTitle = "Количество прогонов"
+	chart.yAxisTitle = "Значения"
+
+	chart.addSeries("Доверительный интервал L", range.map { it + 1 }, intervals.map { it.first })
+		.setXYSeriesRenderStyle(
+			XYSeries.XYSeriesRenderStyle.Line
+		).setMarkerColor(
+			Color.GRAY
+		).setLineColor(
+			Color.GRAY
+		).fillColor = Color.GRAY
+
+	chart.addSeries("Доверительный интервал U", range.map { it + 1 }, intervals.map { it.second })
+		.setXYSeriesRenderStyle(
+			XYSeries.XYSeriesRenderStyle.Line
+		).setMarkerColor(
+			Color.GRAY
+		).setLineColor(
+			Color.GRAY
+		).fillColor = Color.GRAY
+
+	chart.addSeries("Средние значения", range.map { it + 1 }, means).setXYSeriesRenderStyle(
+		XYSeries.XYSeriesRenderStyle.Line
+	).setMarkerColor(
+		Color.BLACK
+	).setLineColor(
+		Color.BLACK
+	).fillColor = Color.BLACK
+
+	val outputDir = mdIfNot("output")
+	BitmapEncoder.saveBitmap(chart, "./$outputDir/confidence", BitmapFormat.JPG)
 }
 
-fun researchAccuracy() {
-	val maxRuns = 100
-	val step = 1
+fun researchAccuracy(statisticsArrayArray: List<Array<Statistics>>) {
+	val simulations = statisticsArrayArray.lastIndex
+	val range = 1..simulations
+
 	val averageResults = mutableListOf<Pair<Int, Double>>()
 
-	for (runs in step..maxRuns step step) {
-		val statisticsArray = Array(runs) { Statistics() }
+	for (i in range) {
+		val statisticsArray = statisticsArrayArray[i]
 
-		val factoryArray = Array(runs) {
-			val factory = Factory(runs)
+		val averageAccuracy = statisticsArray.map { abs(it.getProduceTime() - 6.0) }.average()
+
+		averageResults.add(i to averageAccuracy)
+	}
+
+	val chart = XYChart(1600, 900)
+	chart.title = "Зависимость точности от количества прогонов"
+	chart.xAxisTitle = "Количество прогонов"
+	chart.yAxisTitle = "Средняя точность"
+
+	val xData = averageResults.map { it.first + 1.0 }
+	val yData = averageResults.map { it.second }
+
+	chart.addSeries("Точность", xData, yData)
+
+	val outputDir = mdIfNot("output")
+	BitmapEncoder.saveBitmap(chart, "./$outputDir/accuracy_plot", BitmapFormat.JPG)
+}
+
+fun makeOneHundredLaunchs(): Array<Array<Statistics>> {
+	val statisticsArrayArray = mutableListOf<Array<Statistics>>()
+
+	for (i in 0..99) {
+		val statisticsArray = Array(i + 1) { Statistics() }
+		val factoryArray = Array(i + 1) {
+			val factory = Factory(1000)
 			factory.statistics = statisticsArray[it]
 			factory
 		}
-		val threadArray = Array(runs) {
+		val threadArray = Array(i + 1) {
 			Thread {
 				factoryArray[it].run()
 			}
@@ -133,22 +205,10 @@ fun researchAccuracy() {
 		threadArray.forEach { it.start() }
 		threadArray.forEach { it.join() }
 
-		val averageAccuracy = statisticsArray.map { it.getProduceTime() }.average()
-		averageResults.add(runs to averageAccuracy)
+		statisticsArrayArray.add(statisticsArray)
 	}
 
-	val chart = XYChart(1600, 900)
-	chart.title = "Зависимость точности от количества прогонов"
-	chart.xAxisTitle = "Количество прогонов"
-	chart.yAxisTitle = "Средняя точность"
-
-	val xData = averageResults.map { it.first.toDouble() }.toDoubleArray()
-	val yData = averageResults.map { 100.0f - (abs(it.second - 6.0) / 6.0f * 100.0f) }.toDoubleArray()
-
-	chart.addSeries("Точность", xData, yData)
-
-	val outputDir = mdIfNot("output")
-	BitmapEncoder.saveBitmap(chart, "./$outputDir/accuracy_plot", BitmapFormat.JPG)
+	return statisticsArrayArray.toTypedArray()
 }
 
 private fun mdIfNot(path: String): File {
