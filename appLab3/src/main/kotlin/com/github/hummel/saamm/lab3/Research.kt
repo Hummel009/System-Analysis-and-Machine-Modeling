@@ -10,7 +10,6 @@ import org.knowm.xchart.XYChart
 import org.knowm.xchart.XYSeries
 import java.awt.Color
 import java.io.File
-import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.log2
 import kotlin.math.sqrt
@@ -162,25 +161,35 @@ fun researchAccuracy(statisticsArrayArray: List<Array<Statistics>>) {
 	val simulations = statisticsArrayArray.lastIndex
 	val range = 1..simulations
 
-	val averageResults = mutableListOf<Pair<Int, Double>>()
+	val deltas = mutableListOf<Double>()
 
 	for (i in range) {
 		val statisticsArray = statisticsArrayArray[i]
 
-		val averageAccuracy = statisticsArray.map { abs(it.getProduceTime() - 6.0) }.average()
+		val produceTimeList = statisticsArray.map { it.getProduceTime() }
 
-		averageResults.add(i to averageAccuracy)
+		val n = produceTimeList.size
+		val mean = produceTimeList.average()
+		val stdDev = sqrt(produceTimeList.map { (it - mean) * (it - mean) }.sum() / (n - 1.0))
+
+		val tDist = TDistribution(n - 1.0)
+		val alpha = 0.05
+		val tValue = tDist.inverseCumulativeProbability(1 - alpha / 2)
+
+		val marginOfError = tValue * (stdDev / sqrt(n.toDouble()))
+
+		val delta = marginOfError
+		deltas.add(delta)
 	}
 
+	val smoothedDeltas = movingAverage(deltas, 20)
+
 	val chart = XYChart(1600, 900)
-	chart.title = "Зависимость точности от количества прогонов"
+	chart.title = "Зависимость погрешности от прогонов"
 	chart.xAxisTitle = "Количество прогонов"
-	chart.yAxisTitle = "Средняя точность"
+	chart.yAxisTitle = "Дельта"
 
-	val xData = averageResults.map { it.first + 1.0 }
-	val yData = averageResults.map { it.second }
-
-	chart.addSeries("Точность", xData, yData)
+	chart.addSeries("Дельта", range.map { it + 1 }, smoothedDeltas)
 
 	val outputDir = mdIfNot("output")
 	BitmapEncoder.saveBitmap(chart, "./$outputDir/accuracy_plot", BitmapFormat.JPG)
@@ -217,4 +226,15 @@ private fun mdIfNot(path: String): File {
 		soundsDir.mkdirs()
 	}
 	return soundsDir
+}
+
+fun movingAverage(data: List<Double>, windowSize: Int): List<Double> {
+	val result = mutableListOf<Double>()
+	for (i in data.indices) {
+		val start = maxOf(0, i - windowSize / 2)
+		val end = minOf(data.size - 1, i + windowSize / 2)
+		val average = data.subList(start, end + 1).average()
+		result.add(average)
+	}
+	return result
 }
