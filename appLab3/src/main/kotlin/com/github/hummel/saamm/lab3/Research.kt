@@ -127,7 +127,7 @@ fun researchConfidenceInterval(statisticsArrayArray: List<Array<Statistics>>) {
 	chart.xAxisTitle = "Количество прогонов"
 	chart.yAxisTitle = "Значения"
 
-	chart.addSeries("Доверительный интервал L", range.map { it + 1 }, intervals.map { it.first })
+	chart.addSeries("Доверительный интервал L", range.map { it + 1 }, movingAverage(intervals.map { it.first }, 20))
 		.setXYSeriesRenderStyle(
 			XYSeries.XYSeriesRenderStyle.Line
 		).setMarkerColor(
@@ -136,7 +136,7 @@ fun researchConfidenceInterval(statisticsArrayArray: List<Array<Statistics>>) {
 			Color.GRAY
 		).fillColor = Color.GRAY
 
-	chart.addSeries("Доверительный интервал U", range.map { it + 1 }, intervals.map { it.second })
+	chart.addSeries("Доверительный интервал U", range.map { it + 1 }, movingAverage(intervals.map { it.second }, 20))
 		.setXYSeriesRenderStyle(
 			XYSeries.XYSeriesRenderStyle.Line
 		).setMarkerColor(
@@ -145,7 +145,7 @@ fun researchConfidenceInterval(statisticsArrayArray: List<Array<Statistics>>) {
 			Color.GRAY
 		).fillColor = Color.GRAY
 
-	chart.addSeries("Средние значения", range.map { it + 1 }, means).setXYSeriesRenderStyle(
+	chart.addSeries("Средние значения", range.map { it + 1 }, movingAverage(means, 20)).setXYSeriesRenderStyle(
 		XYSeries.XYSeriesRenderStyle.Line
 	).setMarkerColor(
 		Color.BLACK
@@ -182,14 +182,12 @@ fun researchAccuracy(statisticsArrayArray: List<Array<Statistics>>) {
 		deltas.add(delta)
 	}
 
-	val smoothedDeltas = movingAverage(deltas, 20)
-
 	val chart = XYChart(1600, 900)
 	chart.title = "Зависимость погрешности от прогонов"
 	chart.xAxisTitle = "Количество прогонов"
 	chart.yAxisTitle = "Дельта"
 
-	chart.addSeries("Дельта", range.map { it + 1 }, smoothedDeltas)
+	chart.addSeries("Дельта", range.map { it + 1 }, movingAverage(deltas, 20))
 
 	val outputDir = mdIfNot("output")
 	BitmapEncoder.saveBitmap(chart, "./$outputDir/accuracy_plot", BitmapFormat.JPG)
