@@ -95,8 +95,7 @@ fun researchDistributionIdea(statisticsArray: Array<Statistics>) {
 }
 
 fun researchConfidenceInterval(statisticsArrayArray: List<Array<Statistics>>) {
-	val simulations = statisticsArrayArray.lastIndex
-	val range = 1..simulations
+	val range = 1..statisticsArrayArray.lastIndex
 
 	val intervals = mutableListOf<Pair<Double, Double>>()
 	val means = mutableListOf<Double>()
@@ -158,8 +157,7 @@ fun researchConfidenceInterval(statisticsArrayArray: List<Array<Statistics>>) {
 }
 
 fun researchAccuracy(statisticsArrayArray: List<Array<Statistics>>) {
-	val simulations = statisticsArrayArray.lastIndex
-	val range = 1..simulations
+	val range = 1..statisticsArrayArray.lastIndex
 
 	val deltas = mutableListOf<Double>()
 
