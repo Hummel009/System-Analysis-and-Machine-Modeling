@@ -94,31 +94,25 @@ fun researchDistributionIdea(statisticsArray: Array<Statistics>) {
 	println("Данные${if (isNormal) "" else " не"} нормально распределены.")
 }
 
-fun researchConfidenceInterval(statisticsArrayArray: List<Array<Statistics>>) {
-	val range = 1..statisticsArrayArray.lastIndex
+fun researchConfidenceInterval(statisticsArray: Array<Statistics>) {
+	val produceTimeList = statisticsArray.map { it.getProduceTime() }
 
 	val intervals = mutableListOf<Pair<Double, Double>>()
-	val means = mutableListOf<Double>()
 
-	for (i in range) {
-		val statisticsArray = statisticsArrayArray[i]
+	val n = produceTimeList.size
+	val mean = produceTimeList.average()
+	val stdDev = sqrt(produceTimeList.map { (it - mean) * (it - mean) }.sum() / (n - 1.0))
 
-		val produceTimeList = statisticsArray.map { it.getProduceTime() }
+	val tDist = TDistribution(n - 1.0)
+	val alpha = 0.05
+	val tValue = tDist.inverseCumulativeProbability(1 - alpha / 2)
 
-		val n = produceTimeList.size
-		val mean = produceTimeList.average()
-		val stdDev = sqrt(produceTimeList.map { (it - mean) * (it - mean) }.sum() / (n - 1.0))
+	val marginOfError = tValue * (stdDev / sqrt(n.toDouble()))
 
-		val tDist = TDistribution(n - 1.0)
-		val alpha = 0.05
-		val tValue = tDist.inverseCumulativeProbability(1 - alpha / 2)
+	val (from, to) = mean - marginOfError to mean + marginOfError
 
-		val marginOfError = tValue * (stdDev / sqrt(n.toDouble()))
-
-		val (from, to) = mean - marginOfError to mean + marginOfError
-
+	repeat(statisticsArray.size) {
 		intervals.add(from to to)
-		means.add(mean)
 	}
 
 	val chart = XYChart(1600, 900)
@@ -126,7 +120,7 @@ fun researchConfidenceInterval(statisticsArrayArray: List<Array<Statistics>>) {
 	chart.xAxisTitle = "Количество прогонов"
 	chart.yAxisTitle = "Значения"
 
-	chart.addSeries("Доверительный интервал L", range.map { it + 1 }, movingAverage(intervals.map { it.first }, 20))
+	chart.addSeries("Доверительный интервал L", statisticsArray.indices.map { it + 1 }, intervals.map { it.first })
 		.setXYSeriesRenderStyle(
 			XYSeries.XYSeriesRenderStyle.Line
 		).setMarkerColor(
@@ -135,7 +129,7 @@ fun researchConfidenceInterval(statisticsArrayArray: List<Array<Statistics>>) {
 			Color.GRAY
 		).fillColor = Color.GRAY
 
-	chart.addSeries("Доверительный интервал U", range.map { it + 1 }, movingAverage(intervals.map { it.second }, 20))
+	chart.addSeries("Доверительный интервал U", statisticsArray.indices.map { it + 1 }, intervals.map { it.second })
 		.setXYSeriesRenderStyle(
 			XYSeries.XYSeriesRenderStyle.Line
 		).setMarkerColor(
@@ -144,8 +138,10 @@ fun researchConfidenceInterval(statisticsArrayArray: List<Array<Statistics>>) {
 			Color.GRAY
 		).fillColor = Color.GRAY
 
-	chart.addSeries("Средние значения", range.map { it + 1 }, movingAverage(means, 20)).setXYSeriesRenderStyle(
-		XYSeries.XYSeriesRenderStyle.Line
+	chart.addSeries(
+		"Средние значения", statisticsArray.indices.map { it + 1 }, produceTimeList
+	).setXYSeriesRenderStyle(
+		XYSeries.XYSeriesRenderStyle.Scatter
 	).setMarkerColor(
 		Color.BLACK
 	).setLineColor(
@@ -191,13 +187,13 @@ fun researchAccuracy(statisticsArrayArray: List<Array<Statistics>>) {
 	BitmapEncoder.saveBitmap(chart, "./$outputDir/accuracy_plot", BitmapFormat.JPG)
 }
 
-fun makeOneHundredLaunchs(): Array<Array<Statistics>> {
+fun generateAllSetsOfSimulations(): Array<Array<Statistics>> {
 	val statisticsArrayArray = mutableListOf<Array<Statistics>>()
 
 	for (i in 1..100) {
 		val statisticsArray = Array(i) { Statistics() }
 		val factoryArray = Array(i) {
-			val factory = Factory(1000)
+			val factory = Factory()
 			factory.statistics = statisticsArray[it]
 			factory
 		}
@@ -233,4 +229,26 @@ fun movingAverage(data: List<Double>, windowSize: Int): List<Double> {
 		result.add(average)
 	}
 	return result
+}
+
+fun generateFiftySetsOfSimulationsForce(multiplierGen: Int, generatorChance: Float): Array<Statistics> {
+	val statisticsArray = Array(50) { Statistics() }
+	val factoryArray = Array(50) {
+		val factory = Factory(
+			multiplierGen = multiplierGen,
+			generatorChance = generatorChance
+		)
+		factory.statistics = statisticsArray[it]
+		factory
+	}
+	val threadArray = Array(50) {
+		Thread {
+			factoryArray[it].run()
+		}
+	}
+
+	threadArray.forEach { it.start() }
+	threadArray.forEach { it.join() }
+
+	return statisticsArray
 }

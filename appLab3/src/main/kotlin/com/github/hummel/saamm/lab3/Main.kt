@@ -1,5 +1,6 @@
 package com.github.hummel.saamm.lab3
 
+import org.apache.commons.math3.stat.correlation.PearsonsCorrelation
 import java.util.PriorityQueue
 import java.util.Random
 
@@ -10,7 +11,7 @@ const val PRODUCTS_FOR_PACKET = 8
 const val PACKETS_FOR_STORAGE = 3
 
 fun main() {
-	val statisticsArrayArray = makeOneHundredLaunchs()
+	val statisticsArrayArray = generateAllSetsOfSimulations()
 
 	researchAverageStats(statisticsArrayArray[99].copyOf())
 
@@ -18,12 +19,35 @@ fun main() {
 
 	researchDistributionIdea(statisticsArrayArray[99].copyOf())
 
-	researchConfidenceInterval(statisticsArrayArray.take(50))
+	researchConfidenceInterval(statisticsArrayArray[9].copyOf())
 
 	researchAccuracy(statisticsArrayArray.take(100))
+
+	val statisticsArrayF1 = generateFiftySetsOfSimulationsForce(2, 1.0f)
+	val statisticsArrayF2 = generateFiftySetsOfSimulationsForce(1, 0.75f)
+	val statisticsArrayF3 = generateFiftySetsOfSimulationsForce(2, 0.75f)
+
+	val resultsOrig = statisticsArrayArray[49].map { it.getProduceTime() }.toDoubleArray()
+	val results1 = statisticsArrayF1.map { it.getProduceTime() }.toDoubleArray()
+	val results2 = statisticsArrayF2.map { it.getProduceTime() }.toDoubleArray()
+	val results3 = statisticsArrayF3.map { it.getProduceTime() }.toDoubleArray()
+
+	val correlation = PearsonsCorrelation()
+
+	val correlationCoefficient1 = correlation.correlation(resultsOrig, results1)
+	val correlationCoefficient2 = correlation.correlation(resultsOrig, results2)
+	val correlationCoefficient3 = correlation.correlation(resultsOrig, results3)
+
+	println("Коэффициент корреляции 1: $correlationCoefficient1")
+	println("Коэффициент корреляции 2: $correlationCoefficient2")
+	println("Коэффициент корреляции 3: $correlationCoefficient3")
 }
 
-class Factory(val stopRule: Int) {
+class Factory(
+	val stopRule: Int = 1000,
+	val multiplierGen: Int = 1,
+	val generatorChance: Float = 0.5f
+) {
 	private val random = Random()
 
 	private var partsType1 = 0
@@ -49,9 +73,10 @@ class Factory(val stopRule: Int) {
 
 			when (task.taskType) {
 				TaskType.GENERATOR -> {
-					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5) * 1000 + 500
+					val time =
+						(random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5) * 1000 * multiplierGen + 500 * multiplierGen
 
-					if (random.nextBoolean()) {
+					if (random.nextFloat() <= generatorChance) {
 						partsType1++
 						statistics.partsType1++
 						queue.add(Task(currentTime + time, TaskType.MACHINE_1))
