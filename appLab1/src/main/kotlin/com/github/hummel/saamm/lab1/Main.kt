@@ -1,10 +1,18 @@
 package com.github.hummel.saamm.lab1
 
-import org.knowm.xchart.SwingWrapper
+import org.apache.commons.math3.distribution.UniformRealDistribution
+import org.apache.commons.math3.stat.inference.ChiSquareTest
+import org.apache.commons.math3.stat.inference.KolmogorovSmirnovTest
+import org.knowm.xchart.BitmapEncoder
+import org.knowm.xchart.BitmapEncoder.BitmapFormat
+import org.knowm.xchart.CategoryChart
 import org.knowm.xchart.XYChart
-import kotlin.math.floor
+import java.io.File
+import kotlin.math.ceil
+import kotlin.math.log2
 import kotlin.math.pow
-import kotlin.math.sqrt
+
+val outputDir = mdIfNot("output")
 
 fun main() {
 	val x0 = 123456789L
@@ -14,24 +22,19 @@ fun main() {
 
 	val quantity = 100
 	val randomNumbers = generateRandomNumbers(x0, a, c, m, quantity)
-	val histogram = buildHistogram(randomNumbers, 20)
 
-	println("Histogram:")
-	histogram.forEachIndexed { index, value ->
-		println("${index + 1}: ${"*" * value}")
-	}
+	randomNumbers.sort()
 
-	val chiSquareResult = chiSquareTest(histogram, quantity)
-	println("Chi Square: $chiSquareResult")
+	plotHistogram(randomNumbers)
 
-	val (kP, kM) = kolmogorovSmirnovTest(randomNumbers)
-	println("Kn+: $kP")
-	println("Kn-: $kM")
+	chiSquareTest(randomNumbers)
 
-	plotKSGraph(randomNumbers)
+	ksTest(randomNumbers)
+
+	plotRandomUniform(randomNumbers)
 }
 
-fun generateRandomNumbers(x0: Long, a: Long, c: Long, m: Long, count: Int): List<Double> {
+fun generateRandomNumbers(x0: Long, a: Long, c: Long, m: Long, count: Int): DoubleArray {
 	val randomNumbers = mutableListOf<Double>()
 	var xn = x0
 
@@ -40,78 +43,93 @@ fun generateRandomNumbers(x0: Long, a: Long, c: Long, m: Long, count: Int): List
 		randomNumbers.add(xn.toDouble() / m)
 	}
 
-	return randomNumbers
+	return randomNumbers.toDoubleArray()
 }
 
-fun buildHistogram(numbers: List<Double>, bins: Int): IntArray {
-	val histogram = IntArray(bins) { 0 }
-	val binSize = 1.0 / bins
+fun plotHistogram(randomNumbers: DoubleArray) {
+	val numberOfIntervals = ceil(log2(randomNumbers.size.toDouble())).toInt() + 1
 
-	numbers.asSequence().map {
-		floor(it / binSize).toInt().coerceAtMost(bins - 1)
-	}.forEach {
-		histogram[it]++
+	val minValue = randomNumbers.minOrNull() ?: 0.0
+	val maxValue = randomNumbers.maxOrNull() ?: 1.0
+	val intervalSize = (maxValue - minValue) / numberOfIntervals
+
+	val histogram = IntArray(numberOfIntervals)
+	randomNumbers.forEach { time ->
+		val index = ((time - minValue) / intervalSize).toInt().coerceIn(0, numberOfIntervals - 1)
+		histogram[index]++
 	}
 
-	return histogram
+	val chart = CategoryChart(1600, 900)
+	chart.title = "Гистограмма"
+	chart.xAxisTitle = "X"
+	chart.yAxisTitle = "Y"
+
+	val xData = DoubleArray(numberOfIntervals) { minValue + it * intervalSize + intervalSize / 2 }
+	val yData = histogram.map { it.toDouble() }.toDoubleArray()
+
+	chart.addSeries("Гистограмма", xData, yData)
+
+	BitmapEncoder.saveBitmap(chart, "./${outputDir}/histogram", BitmapFormat.JPG)
 }
 
-fun chiSquareTest(histogram: IntArray, total: Int): Double {
-	val expected = total.toDouble() / histogram.size
+fun chiSquareTest(randomNumbers: DoubleArray) {
+	val numberOfIntervals = ceil(log2(randomNumbers.size.toDouble())).toInt() + 1
 
-	val chiSquare = histogram.sumOf {
-		(it - expected).pow(2).toDouble() / expected
-	}.toDouble()
+	val minValue = randomNumbers.minOrNull() ?: 0.0
+	val maxValue = randomNumbers.maxOrNull() ?: 1.0
+	val intervalSize = (maxValue - minValue) / numberOfIntervals
 
-	return chiSquare
-}
-
-fun kolmogorovSmirnovTest(numbers: List<Double>): Pair<Double, Double> {
-	val sortedNumbers = numbers.sorted()
-	val n = numbers.size
-	var kpMax = 0.0
-	var kmMax = 0.0
-
-	for (i in sortedNumbers.indices) {
-		val empiricalF = i.toDouble() / n
-		val theoreticalF = sortedNumbers[i]
-		kpMax = maxOf(kpMax, theoreticalF - empiricalF)
-		kmMax = maxOf(kmMax, empiricalF - theoreticalF)
+	val observedFrequencies = IntArray(numberOfIntervals)
+	randomNumbers.forEach { time ->
+		val index = ((time - minValue) / intervalSize).toInt().coerceIn(0, numberOfIntervals - 1)
+		observedFrequencies[index]++
 	}
 
-	val kP = sqrt(n.toDouble()) * kpMax
-	val kM = sqrt(n.toDouble()) * kmMax
+	val expectedFrequency = randomNumbers.size.toDouble() / numberOfIntervals
+	val expectedFrequencies = DoubleArray(numberOfIntervals) { expectedFrequency }
 
-	return kP to kM
+	val observedFrequenciesLong = observedFrequencies.map { it.toLong() }.toLongArray()
+
+	val chiSquareTest = ChiSquareTest()
+	val pValue = chiSquareTest.chiSquareTest(expectedFrequencies, observedFrequenciesLong)
+
+	val alpha = 0.05
+	val isUniform = pValue > alpha
+
+	println("Результат теста хи-квадрат: p-значение = $pValue")
+	println("Данные${if (isUniform) "" else " не"} равномерно распределены.")
 }
 
-fun plotKSGraph(numbers: List<Double>) {
-	val sortedNumbers = numbers.sorted()
-	val n = numbers.size
+fun ksTest(randomNumbers: DoubleArray) {
+	val uniformRealDistribution = UniformRealDistribution(0.0, 1.0)
 
-	val empiricalY = mutableListOf<Double>()
-	val theoreticalY = mutableListOf<Double>()
+	val ksTest = KolmogorovSmirnovTest()
+	val pValue = ksTest.kolmogorovSmirnovTest(uniformRealDistribution, randomNumbers)
 
-	for (i in sortedNumbers.indices) {
-		val empiricalF = i.toDouble() / n
-		val theoreticalF = sortedNumbers[i]
+	val alpha = 0.05
+	val isUniform = pValue > alpha
 
-		empiricalY.add(empiricalF)
-		theoreticalY.add(theoreticalF)
+	println("Результат теста КС: p-значение = $pValue")
+	println("Данные${if (isUniform) "" else " не"} равномерно распределены.")
+}
+
+fun plotRandomUniform(randomNumbers: DoubleArray) {
+	val expectedValues = DoubleArray(100) { it * 0.01 }
+
+	val chart = XYChart(1600, 900)
+	chart.title = "Random vs Uniform"
+	chart.xAxisTitle = "X"
+	chart.yAxisTitle = "Y"
+
+	chart.addSeries("Random", randomNumbers.indices.map { it.toDouble() }.toDoubleArray(), randomNumbers)
+	chart.addSeries("Uniform", randomNumbers.indices.map { it.toDouble() }.toDoubleArray(), expectedValues)
+	BitmapEncoder.saveBitmap(chart, "./${outputDir}/random_uniform", BitmapFormat.JPG)
+}
+
+fun mdIfNot(path: String): File {
+	val soundsDir = File(path)
+	if (!soundsDir.exists()) {
+		soundsDir.mkdirs()
 	}
-
-	val chart = XYChart(750, 600)
-	chart.title = "KS Test"
-	chart.xAxisTitle = "x"
-	chart.yAxisTitle = "F(x)"
-
-	val commonX = (0..99).map { it / 100.0 }
-
-	chart.addSeries("Empir function", commonX.map { it.toDouble() }, empiricalY.map { it.toDouble() })
-
-	chart.addSeries("Theor function", commonX.map { it.toDouble() }, theoreticalY.map { it.toDouble() })
-
-	SwingWrapper(chart).displayChart().isVisible = true
+	return soundsDir
 }
-
-operator fun String.times(count: Int): String = this.repeat(count)
