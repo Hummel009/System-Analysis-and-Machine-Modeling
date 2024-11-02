@@ -35,15 +35,11 @@ fun main() {
 }
 
 fun generateRandomNumbers(x0: Long, a: Long, c: Long, m: Long, count: Int): DoubleArray {
-	val randomNumbers = mutableListOf<Double>()
-	var xn = x0
-
-	repeat(count) {
-		xn = (a * xn + c) % m
-		randomNumbers.add(xn.toDouble() / m)
-	}
-
-	return randomNumbers.toDoubleArray()
+	return generateSequence(x0) {
+		(a * it + c) % m
+	}.take(count).map {
+		it.toDouble() / m
+	}.toList().toDoubleArray()
 }
 
 fun plotHistogram(randomNumbers: DoubleArray) {
@@ -123,6 +119,7 @@ fun plotRandomUniform(randomNumbers: DoubleArray) {
 
 	chart.addSeries("Random", randomNumbers.indices.map { it.toDouble() }.toDoubleArray(), randomNumbers)
 	chart.addSeries("Uniform", randomNumbers.indices.map { it.toDouble() }.toDoubleArray(), expectedValues)
+
 	BitmapEncoder.saveBitmap(chart, "./${outputDir}/random_uniform", BitmapFormat.JPG)
 }
 
