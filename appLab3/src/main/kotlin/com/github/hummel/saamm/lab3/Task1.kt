@@ -18,10 +18,10 @@ fun researchDistributionGraph(statisticsArray: Array<Statistics>) {
 	val maxValue = produceTimeList.maxOrNull() ?: 1.0
 	val intervalSize = (maxValue - minValue) / numberOfIntervals
 
-	val histogram = IntArray(numberOfIntervals)
+	val observedFrequencies = IntArray(numberOfIntervals)
 	produceTimeList.forEach { time ->
 		val index = ((time - minValue) / intervalSize).toInt().coerceIn(0, numberOfIntervals - 1)
-		histogram[index]++
+		observedFrequencies[index]++
 	}
 
 	val chart = CategoryChart(1600, 900)
@@ -30,7 +30,7 @@ fun researchDistributionGraph(statisticsArray: Array<Statistics>) {
 	chart.yAxisTitle = "Встречаемость"
 
 	val xData = DoubleArray(numberOfIntervals) { minValue + it * intervalSize + intervalSize / 2 }
-	val yData = histogram.map { it.toDouble() }.toDoubleArray()
+	val yData = observedFrequencies.map { it.toDouble() }.toDoubleArray()
 
 	chart.addSeries("Гистограмма", xData, yData)
 
