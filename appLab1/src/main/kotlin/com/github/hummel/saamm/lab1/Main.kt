@@ -31,19 +31,19 @@ fun main() {
 	plotKSGraph(randomNumbers)
 }
 
-fun generateRandomNumbers(x0: Long, a: Long, c: Long, m: Long, count: Int): List<Float> {
-	val randomNumbers = mutableListOf<Float>()
+fun generateRandomNumbers(x0: Long, a: Long, c: Long, m: Long, count: Int): List<Double> {
+	val randomNumbers = mutableListOf<Double>()
 	var xn = x0
 
 	repeat(count) {
 		xn = (a * xn + c) % m
-		randomNumbers.add(xn.toFloat() / m)
+		randomNumbers.add(xn.toDouble() / m)
 	}
 
 	return randomNumbers
 }
 
-fun buildHistogram(numbers: List<Float>, bins: Int): IntArray {
+fun buildHistogram(numbers: List<Double>, bins: Int): IntArray {
 	val histogram = IntArray(bins) { 0 }
 	val binSize = 1.0 / bins
 
@@ -56,44 +56,44 @@ fun buildHistogram(numbers: List<Float>, bins: Int): IntArray {
 	return histogram
 }
 
-fun chiSquareTest(histogram: IntArray, total: Int): Float {
-	val expected = total.toFloat() / histogram.size
+fun chiSquareTest(histogram: IntArray, total: Int): Double {
+	val expected = total.toDouble() / histogram.size
 
 	val chiSquare = histogram.sumOf {
 		(it - expected).pow(2).toDouble() / expected
-	}.toFloat()
+	}.toDouble()
 
 	return chiSquare
 }
 
-fun kolmogorovSmirnovTest(numbers: List<Float>): Pair<Float, Float> {
+fun kolmogorovSmirnovTest(numbers: List<Double>): Pair<Double, Double> {
 	val sortedNumbers = numbers.sorted()
 	val n = numbers.size
-	var kpMax = 0.0f
-	var kmMax = 0.0f
+	var kpMax = 0.0
+	var kmMax = 0.0
 
 	for (i in sortedNumbers.indices) {
-		val empiricalF = i.toFloat() / n
+		val empiricalF = i.toDouble() / n
 		val theoreticalF = sortedNumbers[i]
 		kpMax = maxOf(kpMax, theoreticalF - empiricalF)
 		kmMax = maxOf(kmMax, empiricalF - theoreticalF)
 	}
 
-	val kP = sqrt(n.toFloat()) * kpMax
-	val kM = sqrt(n.toFloat()) * kmMax
+	val kP = sqrt(n.toDouble()) * kpMax
+	val kM = sqrt(n.toDouble()) * kmMax
 
 	return kP to kM
 }
 
-fun plotKSGraph(numbers: List<Float>) {
+fun plotKSGraph(numbers: List<Double>) {
 	val sortedNumbers = numbers.sorted()
 	val n = numbers.size
 
-	val empiricalY = mutableListOf<Float>()
-	val theoreticalY = mutableListOf<Float>()
+	val empiricalY = mutableListOf<Double>()
+	val theoreticalY = mutableListOf<Double>()
 
 	for (i in sortedNumbers.indices) {
-		val empiricalF = i.toFloat() / n
+		val empiricalF = i.toDouble() / n
 		val theoreticalF = sortedNumbers[i]
 
 		empiricalY.add(empiricalF)
@@ -105,7 +105,7 @@ fun plotKSGraph(numbers: List<Float>) {
 	chart.xAxisTitle = "x"
 	chart.yAxisTitle = "F(x)"
 
-	val commonX = (0..99).map { it / 100.0f }
+	val commonX = (0..99).map { it / 100.0 }
 
 	chart.addSeries("Empir function", commonX.map { it.toDouble() }, empiricalY.map { it.toDouble() })
 

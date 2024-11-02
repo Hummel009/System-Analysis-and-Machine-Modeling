@@ -1,7 +1,6 @@
 package com.github.hummel.saamm.lab3
 
-import org.apache.commons.math3.stat.correlation.PearsonsCorrelation
-import org.knowm.xchart.XYChart
+import java.io.File
 import java.util.PriorityQueue
 import java.util.Random
 
@@ -11,78 +10,88 @@ const val PARTS_2_FOR_PRODUCT = 2
 const val PRODUCTS_FOR_PACKET = 8
 const val PACKETS_FOR_STORAGE = 3
 
+val outputDir = mdIfNot("output")
+
 fun main() {
-//	val statisticsArrayArray = generateAllSetsOfSimulations()
-//
-//	researchAverageStats(statisticsArrayArray[99].copyOf())
-//
-//	researchDistributionGraph(statisticsArrayArray[99].copyOf())
-//
-//	researchDistributionIdea(statisticsArrayArray[99].copyOf())
-//
-//	researchConfidenceInterval(statisticsArrayArray[9].copyOf())
-//
-//	researchAccuracy(statisticsArrayArray.take(100))
+	println("Which task: «1» or «2» or «3» or «4» or «5» or «6»")
 
-	val statisticsArrayOrig = generateSetsOfSimulationsForce(0.0f, 0.5f)
-	val statisticsArrayF1 = generateSetsOfSimulationsForce(0.0f, 0.45f)
-	val statisticsArrayF2 = generateSetsOfSimulationsForce(0.0f, 0.35f)
-	val statisticsArrayF3 = generateSetsOfSimulationsForce(0.0f, 0.25f)
-	val statisticsArrayF4 = generateSetsOfSimulationsForce(0.0f, 0.15f)
+	val input = readln().toInt()
 
-	val resultsOrig = statisticsArrayOrig.map { it.getProduceTime() }.toDoubleArray()
-	val results1 = statisticsArrayF1.map { it.getProduceTime() }.toDoubleArray()
-	val results2 = statisticsArrayF2.map { it.getProduceTime() }.toDoubleArray()
-	val results3 = statisticsArrayF3.map { it.getProduceTime() }.toDoubleArray()
-	val results4 = statisticsArrayF4.map { it.getProduceTime() }.toDoubleArray()
+	when (input) {
+		1 -> {
+			val statisticsArray = simulateRuns(100)
 
-	val correlation = PearsonsCorrelation()
+			researchDistributionGraph(statisticsArray.copyOf())
+			researchDistributionIdea(statisticsArray.copyOf())
+		}
 
-	val tempOrig = resultsOrig.copyOf()
-	tempOrig.sort()
-	val temp1 = results1.copyOf()
-	temp1.sort()
-	val temp2 = results2.copyOf()
-	temp2.sort()
-	val temp3 = results3.copyOf()
-	temp3.sort()
-	val temp4 = results4.copyOf()
-	temp4.sort()
-	val correlationCoefficient1 = correlation.correlation(tempOrig, temp1)
-	val correlationCoefficient2 = correlation.correlation(tempOrig, temp2)
-	val correlationCoefficient3 = correlation.correlation(tempOrig, temp3)
-	val correlationCoefficient4 = correlation.correlation(tempOrig, temp4)
+		2 -> {
+			val statisticsArray = simulateRuns(10)
 
-	println("Коэффициент корреляции 1: $correlationCoefficient1")
-	println("Коэффициент корреляции 2: $correlationCoefficient2")
-	println("Коэффициент корреляции 3: $correlationCoefficient3")
-	println("Коэффициент корреляции 4: $correlationCoefficient4")
+			researchConfidenceInterval(statisticsArray.copyOf())
+		}
 
-	val chart = XYChart(1600, 900)
-	chart.title = "Сравнение результатов"
-	chart.xAxisTitle = "Индекс"
-	chart.yAxisTitle = "Значение"
+		3 -> {
+			val statisticsArrayArray = Array(100) { i -> simulateRuns(i + 1) }
 
-	chart.addSeries("Результаты Orig", tempOrig.indices.map { it.toDouble() }.toDoubleArray(), tempOrig)
-	chart.addSeries("Результаты 1", temp1.indices.map { it.toDouble() }.toDoubleArray(), temp1)
-	chart.addSeries("Результаты 2", temp2.indices.map { it.toDouble() }.toDoubleArray(), temp2)
-	chart.addSeries("Результаты 3", temp3.indices.map { it.toDouble() }.toDoubleArray(), temp3)
-	chart.addSeries("Результаты 4", temp4.indices.map { it.toDouble() }.toDoubleArray(), temp4)
+			researchAccuracy(statisticsArrayArray)
+		}
 
-	chart.addSeries(
-		"Регрессия",
-		temp1.indices.map { it.toDouble() }.toDoubleArray(),
-		approximate(tempOrig, temp1, temp2, temp3, temp4)
-	)
+		4 -> {
+			val enoughRuns = 50
+			val statisticsArrayArray = Array(5) { i -> simulateRuns(enoughRuns, generatorChance = 0.5 - i * 0.1) }
 
-	//SwingWrapper(chart).displayChart()
+			researchCorrelation(statisticsArrayArray)
+		}
+
+		5 -> {
+			val statisticsArray = simulateRuns(1)
+
+			researchTransitionPeriod(statisticsArray)
+
+			val enoughRuns = 50
+			val cutoff = 20000
+			val statisticsArrayArray = arrayOf(
+				simulateRuns(enoughRuns, exitTime = 100000.0), simulateRuns(enoughRuns, exitTime = 50000.0)
+			)
+
+			researchReductionPossibility(statisticsArrayArray, cutoff)
+		}
+
+		6 -> {
+			val enoughRuns = 50
+			val enoughTime = 50000
+			val cutoff = 20000
+			val statisticsArrayArray = arrayOf(
+				simulateRuns(1, exitTime = cutoff + enoughRuns * (enoughTime - cutoff).toDouble()),
+				simulateRuns(enoughRuns, exitTime = cutoff + (enoughTime - cutoff).toDouble())
+			)
+
+			researchContinousRunPossibility(statisticsArrayArray, cutoff)
+		}
+	}
+}
+
+fun simulateRuns(
+	runs: Int, generatorChance: Double = 0.5, exitTime: Double = 48000.0
+): Array<Statistics> {
+	val statisticsArray = Array(runs) { Statistics() }
+	val threadArray = statisticsArray.map { stat ->
+		Thread {
+			Factory(generatorChance, exitTime).apply {
+				statistics = stat
+			}.run()
+		}
+	}
+
+	threadArray.forEach { it.start() }
+	threadArray.forEach { it.join() }
+
+	return statisticsArray
 }
 
 class Factory(
-	val stopRule: Int = 2000,
-	val addition: Float = 0.0f,
-	val generatorChance: Float = 0.5f,
-	val exitTime: Float = 100000.0f
+	val generatorChance: Double, val exitTime: Double
 ) {
 	private val random = Random()
 
@@ -109,9 +118,9 @@ class Factory(
 
 			when (task.taskType) {
 				TaskType.GENERATOR -> {
-					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5) * 1000 + 500 + addition
+					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5) * 1000 + 500
 
-					if (random.nextFloat() <= generatorChance) {
+					if (random.nextDouble() <= generatorChance) {
 						partsType1++
 						statistics.partsType1++
 						queue.add(Task(currentTime + time, TaskType.MACHINE_1))
@@ -176,8 +185,7 @@ class Factory(
 						packPlacePackets -= PACKETS_FOR_STORAGE
 						storagePackets += PACKETS_FOR_STORAGE
 						statistics.storagePackets += PACKETS_FOR_STORAGE
-						statistics.productTimes[(currentTime / 1000).toFloat()] =
-							((currentTime / 1000).toFloat() / (storagePackets * 8))
+						statistics.productTimes[currentTime / 1000] = currentTime / 1000 / storagePackets / 8
 					}
 				}
 
@@ -208,7 +216,7 @@ class Statistics {
 	var packPlacePackets = 0
 	var storagePackets = 0
 	var duration = 0.0
-	val productTimes = mutableMapOf<Float, Float>()
+	val productTimes = mutableMapOf<Double, Double>()
 
 	fun getProduceTime() = duration / (storagePackets * 8)
 }
@@ -219,23 +227,10 @@ enum class TaskType {
 	GENERATOR, MACHINE_1, MACHINE_2, ASSEMBLER, TRANSPORTER, PACKER
 }
 
-fun approximate(vararg arrays: DoubleArray): DoubleArray {
-	require(arrays.isNotEmpty()) { "Необходимо передать хотя бы один массив." }
-	require(arrays.all { it.size == arrays[0].size }) { "Все массивы должны быть одного размера." }
-
-	val n = arrays[0].size
-	val m = arrays.size
-
-	// Суммируем значения по каждому массиву
-	val sums = DoubleArray(n) { 0.0 }
-	for (i in 0 until n) {
-		for (j in 0 until m) {
-			sums[i] += arrays[j][i]
-		}
+fun mdIfNot(path: String): File {
+	val soundsDir = File(path)
+	if (!soundsDir.exists()) {
+		soundsDir.mkdirs()
 	}
-
-	// Находим средние значения
-	val averages = sums.map { it / m }
-
-	return averages.toDoubleArray()
+	return soundsDir
 }

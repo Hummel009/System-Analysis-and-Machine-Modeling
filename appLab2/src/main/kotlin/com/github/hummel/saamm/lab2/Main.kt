@@ -10,7 +10,12 @@ const val PRODUCTS_FOR_PACKET = 8
 const val PACKETS_FOR_STORAGE = 3
 
 fun main() {
-	val runs = 10
+	val statisticsArray = simulateRuns(10)
+
+	printAverageStatistics(statisticsArray)
+}
+
+fun simulateRuns(runs: Int): Array<Statistics> {
 	val statisticsArray = Array(runs) { Statistics() }
 	val threadArray = statisticsArray.map { stat ->
 		Thread {
@@ -23,7 +28,7 @@ fun main() {
 	threadArray.forEach { it.start() }
 	threadArray.forEach { it.join() }
 
-	printAverageStatistics(statisticsArray)
+	return statisticsArray
 }
 
 class Factory {
