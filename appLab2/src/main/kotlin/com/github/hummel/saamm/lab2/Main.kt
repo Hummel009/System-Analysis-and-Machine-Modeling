@@ -10,15 +10,13 @@ const val PRODUCTS_FOR_PACKET = 8
 const val PACKETS_FOR_STORAGE = 3
 
 fun main() {
-	val statisticsArray = Array(10) { Statistics() }
-	val factoryArray = Array(10) {
-		val factory = Factory()
-		factory.statistics = statisticsArray[it]
-		factory
-	}
-	val threadArray = Array(10) {
+	val runs = 10
+	val statisticsArray = Array(runs) { Statistics() }
+	val threadArray = statisticsArray.map { stat ->
 		Thread {
-			factoryArray[it].run()
+			Factory().apply {
+				statistics = stat
+			}.run()
 		}
 	}
 
