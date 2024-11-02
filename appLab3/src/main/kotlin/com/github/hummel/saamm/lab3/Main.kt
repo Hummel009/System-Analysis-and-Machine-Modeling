@@ -21,14 +21,14 @@ fun main() {
 		1 -> {
 			val statisticsArray = simulateRuns(100)
 
-			researchDistributionGraph(statisticsArray.copyOf())
-			researchDistributionIdea(statisticsArray.copyOf())
+			researchDistributionGraph(statisticsArray)
+			researchDistributionIdea(statisticsArray)
 		}
 
 		2 -> {
 			val statisticsArray = simulateRuns(10)
 
-			researchConfidenceInterval(statisticsArray.copyOf())
+			researchConfidenceInterval(statisticsArray)
 		}
 
 		3 -> {
