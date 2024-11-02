@@ -231,17 +231,58 @@ fun movingAverage(data: List<Double>, windowSize: Int): List<Double> {
 	return result
 }
 
-fun generateFiftySetsOfSimulationsForce(multiplierGen: Int, generatorChance: Float): Array<Statistics> {
+fun generateSetsOfSimulationsForce(addition: Float, generatorChance: Float): Array<Statistics> {
+	val statisticsArray = Array(20000 + 50 * 30000) { Statistics() }
+	val factoryArray = Array(20000 + 50 * 30000) {
+		val factory = Factory(
+			addition = addition, generatorChance = generatorChance
+		)
+		factory.statistics = statisticsArray[it]
+		factory
+	}
+	val threadArray = Array(20000 + 50 * 30000) {
+		Thread {
+			factoryArray[it].run()
+		}
+	}
+
+	threadArray.forEach { it.start() }
+	threadArray.forEach { it.join() }
+
+	return statisticsArray
+}
+
+fun generateSetsOfSimulationsForce50(addition: Float, generatorChance: Float, exitTime: Float): Array<Statistics> {
 	val statisticsArray = Array(50) { Statistics() }
 	val factoryArray = Array(50) {
 		val factory = Factory(
-			multiplierGen = multiplierGen,
-			generatorChance = generatorChance
+			addition = addition, generatorChance = generatorChance, exitTime = exitTime
 		)
 		factory.statistics = statisticsArray[it]
 		factory
 	}
 	val threadArray = Array(50) {
+		Thread {
+			factoryArray[it].run()
+		}
+	}
+
+	threadArray.forEach { it.start() }
+	threadArray.forEach { it.join() }
+
+	return statisticsArray
+}
+
+fun generateSetsOfSimulationsForce1(addition: Float, generatorChance: Float, exitTime: Float): Array<Statistics> {
+	val statisticsArray = Array(1) { Statistics() }
+	val factoryArray = Array(1) {
+		val factory = Factory(
+			addition = addition, generatorChance = generatorChance, exitTime = exitTime
+		)
+		factory.statistics = statisticsArray[it]
+		factory
+	}
+	val threadArray = Array(1) {
 		Thread {
 			factoryArray[it].run()
 		}
