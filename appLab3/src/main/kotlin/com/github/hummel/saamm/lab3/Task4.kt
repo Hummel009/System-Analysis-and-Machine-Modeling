@@ -16,7 +16,6 @@ fun researchCorrelation(statisticsArrayArray: Array<Array<Statistics>>) {
 
 	for (i in 0 until graphs.size - 1) {
 		correlationCoefficients[i] = correlation.correlation(graphs.last(), graphs[i])
-		println("Коэффициент корреляции: ${correlationCoefficients[i]}")
 	}
 
 	val chart = XYChart(1600, 900)
