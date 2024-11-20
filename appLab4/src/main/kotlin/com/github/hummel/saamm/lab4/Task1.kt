@@ -63,8 +63,6 @@ private fun calculateError(data: DoubleArray, reference: DoubleArray): Double =
 	sqrt(data.zip(reference).map { (d, r) -> (d - r).pow(2) }.average())
 
 private fun determineBestApproximations(corrs: DoubleArray, errs: DoubleArray): String {
-	require(corrs.size == errs.size) { "Массивы должны иметь одинаковую длину" }
-
 	var bestCorrInd = -1
 	var bestErrInd = -1
 	var bestCorrScore = Double.NEGATIVE_INFINITY
