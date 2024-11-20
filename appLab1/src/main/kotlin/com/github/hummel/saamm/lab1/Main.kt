@@ -12,7 +12,7 @@ import kotlin.math.ceil
 import kotlin.math.log2
 import kotlin.math.pow
 
-val outputDir = mdIfNot("output")
+private val outputDir: File = mdIfNot("output")
 
 fun main() {
 	val x0 = 123456789L
