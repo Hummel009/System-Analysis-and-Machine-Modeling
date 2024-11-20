@@ -31,7 +31,12 @@ fun main() {
 		}
 
 		3 -> {
+			val enoughRuns = 50
+			val statisticsArrayArray = Array(5) { i ->
+				simulateRuns(enoughRuns, generatorChance = (i + 1) * 0.05, exitTime = (i + 1) * 10000.0)
+			}
 
+			research2fExperiment(statisticsArrayArray)
 		}
 	}
 }
