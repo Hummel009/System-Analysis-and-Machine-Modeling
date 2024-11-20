@@ -1,43 +1,35 @@
 package com.github.hummel.saamm.lab4
 
-import org.apache.commons.math3.distribution.TDistribution
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
 import org.knowm.xchart.BitmapEncoder
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
 import org.knowm.xchart.XYChart
-import kotlin.math.sqrt
 
+fun twoFactorExperiment() {
+	val generatorChances = doubleArrayOf(0.3, 0.5, 0.7, 0.9)
+	val exitTimes = doubleArrayOf(30000.0, 50000.0, 70000.0, 90000.0)
 
-fun researchAccuracy(statisticsArrayArray: Array<Array<Statistics>>) {
-	val range = 1..statisticsArrayArray.lastIndex
+	val responses = mutableListOf<Pair<Pair<Double, Double>, Double>>()
 
-	val margins = mutableListOf<Double>()
-
-	for (i in range) {
-		val statisticsArray = statisticsArrayArray[i]
-
-		val produceTimeList = statisticsArray.map { it.getProduceTime() }.toDoubleArray()
-
-		val description = DescriptiveStatistics(produceTimeList)
-
-		val n = description.n
-		val stdDev = description.standardDeviation
-
-		val tDist = TDistribution(n - 1.0)
-		val alpha = 0.05
-		val tValue = tDist.inverseCumulativeProbability(1 - alpha / 2)
-
-		val marginOfError = tValue * (stdDev / sqrt(n.toDouble()))
-
-		margins.add(marginOfError)
+	for (chance in generatorChances) {
+		for (time in exitTimes) {
+			val stats = simulateRuns(10, generatorChance = chance, exitTime = time)
+			val averageResponse = stats.map { it.getProduceTime() }.average()
+			responses.add(Pair(chance, time) to averageResponse)
+		}
 	}
 
-	val chart = XYChart(1600, 900)
-	chart.title = "Зависимость погрешности от прогонов"
-	chart.xAxisTitle = "Количество прогонов"
-	chart.yAxisTitle = "Дельта"
+	plotResponseSurface(responses)
+}
 
-	chart.addSeries("Дельта", range.map { it + 1 }, margins)
+private fun plotResponseSurface(responses: List<Pair<Pair<Double, Double>, Double>>) {
+	val chart = XYChart(800, 600)
+	chart.title = "Поверхность отклика"
+	chart.xAxisTitle = "Фактор 1"
+	chart.yAxisTitle = "Фактор 2"
 
-	BitmapEncoder.saveBitmap(chart, "./$outputDir/task3", BitmapFormat.JPG)
+	responses.forEach { (factors, response) ->
+		chart.addSeries("Отклик", doubleArrayOf(factors.first), doubleArrayOf(factors.second), doubleArrayOf(response))
+	}
+
+	BitmapEncoder.saveBitmap(chart, "./output/response_surface", BitmapFormat.JPG)
 }

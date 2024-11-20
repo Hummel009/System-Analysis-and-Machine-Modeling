@@ -18,55 +18,20 @@ fun main() {
 
 	when (input) {
 		1 -> {
-			val statisticsArray = simulateRuns(100)
-
-			researchDistributionGraph(statisticsArray)
-			researchDistributionIdea(statisticsArray)
-		}
-
-		2 -> {
-			val statisticsArray = simulateRuns(10)
-
-			researchConfidenceInterval(statisticsArray)
-		}
-
-		3 -> {
-			val statisticsArrayArray = Array(100) { i -> simulateRuns(i + 1) }
-
-			researchAccuracy(statisticsArrayArray)
-		}
-
-		4 -> {
 			val enoughRuns = 50
-			val statisticsArrayArray = Array(5) { i -> simulateRuns(enoughRuns, generatorChance = 0.5 - i * 0.1) }
+			val statisticsArrayArray = Array(7) { i ->
+				simulateRuns(enoughRuns, generatorChance = 0.5 - i * 0.05)
+			}
 
 			researchCorrelation(statisticsArrayArray)
 		}
 
-		5 -> {
-			val statisticsArray = simulateRuns(1)
+		2 -> {
 
-			researchTransitionPeriod(statisticsArray)
-
-			val enoughRuns = 50
-			val cutoff = 20000
-			val statisticsArrayArray = arrayOf(
-				simulateRuns(enoughRuns, exitTime = 100000.0), simulateRuns(enoughRuns, exitTime = 50000.0)
-			)
-
-			researchReductionPossibility(statisticsArrayArray, cutoff)
 		}
 
-		6 -> {
-			val enoughRuns = 50
-			val enoughTime = 50000
-			val cutoff = 20000
-			val statisticsArrayArray = arrayOf(
-				simulateRuns(1, exitTime = cutoff + enoughRuns * (enoughTime - cutoff).toDouble()),
-				simulateRuns(enoughRuns, exitTime = cutoff + (enoughTime - cutoff).toDouble())
-			)
+		3 -> {
 
-			researchContinousRunPossibility(statisticsArrayArray, cutoff)
 		}
 	}
 }

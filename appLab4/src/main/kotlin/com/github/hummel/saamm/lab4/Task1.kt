@@ -1,58 +1,60 @@
 package com.github.hummel.saamm.lab4
 
-import org.apache.commons.math3.distribution.NormalDistribution
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
-import org.apache.commons.math3.stat.inference.KolmogorovSmirnovTest
+import org.apache.commons.math3.stat.correlation.PearsonsCorrelation
 import org.knowm.xchart.BitmapEncoder
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
-import org.knowm.xchart.CategoryChart
-import kotlin.math.ceil
-import kotlin.math.log2
+import org.knowm.xchart.XYChart
+import java.awt.Color
 
-fun researchDistributionGraph(statisticsArray: Array<Statistics>) {
-	val produceTimeList = statisticsArray.map { it.getProduceTime() }
-
-	val numberOfIntervals = ceil(log2(produceTimeList.size.toDouble())).toInt() + 1
-
-	val minValue = produceTimeList.minOrNull() ?: 0.0
-	val maxValue = produceTimeList.maxOrNull() ?: 1.0
-	val intervalSize = (maxValue - minValue) / numberOfIntervals
-
-	val observedFrequencies = IntArray(numberOfIntervals)
-	produceTimeList.forEach { time ->
-		val index = ((time - minValue) / intervalSize).toInt().coerceIn(0, numberOfIntervals - 1)
-		observedFrequencies[index]++
+fun researchCorrelation(statisticsArrayArray: Array<Array<Statistics>>) {
+	val graphs = statisticsArrayArray.map {
+		it.map { stat -> stat.getProduceTime() }.toDoubleArray().apply { sort() }
 	}
 
-	val chart = CategoryChart(1600, 900)
-	chart.title = "Гистограмма времени изготовления деталей"
-	chart.xAxisTitle = "Время (с)"
-	chart.yAxisTitle = "Встречаемость"
+	val correlation = PearsonsCorrelation()
+	val correlationCoefficients = DoubleArray(graphs.size - 1)
 
-	val xData = DoubleArray(numberOfIntervals) { minValue + it * intervalSize + intervalSize / 2 }
-	val yData = observedFrequencies.map { it.toDouble() }.toDoubleArray()
+	for (i in 0 until graphs.size - 1) {
+		correlationCoefficients[i] = correlation.correlation(graphs.last(), graphs[i])
+		println("Коэффициент корреляции: ${correlationCoefficients[i]}")
+	}
 
-	chart.addSeries("Гистограмма", xData, yData)
+	val chart = XYChart(1600, 900)
+	chart.title = "Сравнение результатов"
+	chart.xAxisTitle = "Индекс"
+	chart.yAxisTitle = "Значение"
 
-	BitmapEncoder.saveBitmap(chart, "./$outputDir/task1", BitmapFormat.JPG)
+	for (i in graphs.indices) {
+		val seriesName = "${i * 10 + 10}%"
+		chart.addSeries(seriesName, graphs[i].indices.map { it.toDouble() }.toDoubleArray(), graphs[i]).apply {
+			markerColor = if (i == graphs.lastIndex) Color.GREEN else Color.BLUE
+			lineColor = if (i == graphs.lastIndex) Color.GREEN else Color.BLUE
+		}
+	}
+
+	val regression = approximate(*graphs.toTypedArray())
+	chart.addSeries(
+		"Регрессия", regression.indices.map { it.toDouble() }.toDoubleArray(), regression
+	).apply {
+		markerColor = Color.RED
+		lineColor = Color.RED
+	}
+
+	BitmapEncoder.saveBitmap(chart, "./$outputDir/task4", BitmapFormat.JPG)
 }
 
-fun researchDistributionIdea(statisticsArray: Array<Statistics>) {
-	val produceTimeList = statisticsArray.map { it.getProduceTime() }.toDoubleArray()
+private fun approximate(vararg arrays: DoubleArray): DoubleArray {
+	val n = arrays[0].size
+	val m = arrays.size
 
-	val description = DescriptiveStatistics(produceTimeList)
+	val sums = DoubleArray(n) { 0.0 }
+	for (i in 0 until n) {
+		for (j in 0 until m) {
+			sums[i] += arrays[j][i]
+		}
+	}
 
-	val mean = description.mean
-	val stdDev = description.standardDeviation
+	val averages = sums.map { it / m }
 
-	val normalDistribution = NormalDistribution(mean, stdDev)
-
-	val ksTest = KolmogorovSmirnovTest()
-	val pValue = ksTest.kolmogorovSmirnovTest(normalDistribution, produceTimeList)
-
-	val alpha = 0.05
-
-	val isNormal = pValue > alpha
-
-	println("Данные${if (isNormal) "" else " не"} нормально распределены.")
+	return averages.toDoubleArray()
 }
