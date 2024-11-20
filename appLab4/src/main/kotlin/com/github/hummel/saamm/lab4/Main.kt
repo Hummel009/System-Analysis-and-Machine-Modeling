@@ -20,7 +20,7 @@ fun main() {
 		1 -> {
 			val enoughRuns = 50
 			val statisticsArrayArray = Array(7) { i ->
-				simulateRuns(enoughRuns, generatorChance = 0.5 - i * 0.05)
+				simulateRuns(enoughRuns, generatorChance = i * 0.05 + 0.05)
 			}
 
 			researchCorrelation(statisticsArrayArray)
