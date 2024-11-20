@@ -1,134 +1,85 @@
 package com.github.hummel.saamm.lab4
 
+import org.apache.commons.math3.analysis.polynomials.PolynomialFunction
 import org.apache.commons.math3.fitting.PolynomialCurveFitter
 import org.apache.commons.math3.fitting.WeightedObservedPoints
-import org.apache.commons.math3.stat.correlation.PearsonsCorrelation
 import org.knowm.xchart.BitmapEncoder
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
 import org.knowm.xchart.XYChart
-import java.awt.Color
 import kotlin.math.pow
 import kotlin.math.sqrt
 
 fun researchCorrelation(statisticsArrayArray: Array<Array<Statistics>>) {
-	val graphs = statisticsArrayArray.map {
-		it.map { stat -> stat.getProduceTime() }.toDoubleArray().apply { sort() }
-	}
-
-	val correlation = PearsonsCorrelation()
-	val correlationCoefficients = DoubleArray(graphs.size - 1)
-	val errors = DoubleArray(graphs.size - 1)
-
-	for (i in 0 until graphs.size - 1) {
-		correlationCoefficients[i] = correlation.correlation(graphs.last(), graphs[i])
-		errors[i] = calculateError(graphs[i], graphs.last())
-	}
-
-	val best = determineBestApproximations(correlationCoefficients, errors)
-	println(best)
+	val yData = statisticsArrayArray.map {
+		it.map { stat -> stat.getProduceTime() }.average()
+	}.toDoubleArray()
 
 	val chart = XYChart(1600, 900)
 	chart.title = "Сравнение результатов"
-	chart.xAxisTitle = "Индекс"
-	chart.yAxisTitle = "Значение"
+	chart.xAxisTitle = "Параметр: шанс производства детали"
+	chart.yAxisTitle = "Отклик: время производства изделия"
 
-	for (i in graphs.indices) {
-		val seriesName = "${(i + 1) * 5}%"
-		chart.addSeries(seriesName, graphs[i].indices.map { it.toDouble() }.toDoubleArray(), graphs[i]).apply {
-			markerColor = if (i == graphs.lastIndex) Color.GREEN else Color.BLUE
-			lineColor = if (i == graphs.lastIndex) Color.GREEN else Color.BLUE
-		}
-	}
+	val xData = DoubleArray(yData.size) { i -> (i + 1) * 0.05 }
 
-	val regressionLinear = linearApproximation(*graphs.toTypedArray())
-	chart.addSeries(
-		"Линейная регрессия", regressionLinear.indices.map { it.toDouble() }.toDoubleArray(), regressionLinear
-	).apply {
-		markerColor = Color.RED
-		lineColor = Color.RED
-	}
-
-	val regressionNonLinear = polynomialApproximation(*graphs.toTypedArray())
-	chart.addSeries(
-		"Нелинейная регрессия", regressionNonLinear.indices.map { it.toDouble() }.toDoubleArray(), regressionNonLinear
-	).apply {
-		markerColor = Color.ORANGE
-		lineColor = Color.ORANGE
-	}
+	chart.addSeries("Оригинальные данные", xData, yData)
+	val linearFit = linearApproximation(xData, yData)
+	chart.addSeries("Линейная аппроксимация", xData, linearFit)
+	val polynomialFit = polynomialApproximation(xData, yData)
+	chart.addSeries("Полиномиальная аппроксимация", xData, polynomialFit)
 
 	BitmapEncoder.saveBitmap(chart, "./$outputDir/task1", BitmapFormat.JPG)
-}
 
-private fun calculateError(data: DoubleArray, reference: DoubleArray): Double =
-	sqrt(data.zip(reference).map { (d, r) -> (d - r).pow(2) }.average())
+	val linearRMSE = calculateRMSE(yData, linearFit)
+	val polynomialRMSE = calculateRMSE(yData, polynomialFit)
 
-private fun determineBestApproximations(corrs: DoubleArray, errs: DoubleArray): String {
-	var bestCorrInd = -1
-	var bestErrInd = -1
-	var bestCorrScore = Double.NEGATIVE_INFINITY
-	var bestErrScore = Double.POSITIVE_INFINITY
+	println("Среднеквадратичная ошибка линейной аппроксимации: $linearRMSE")
+	println("Среднеквадратичная ошибка полиномиальной аппроксимации: $polynomialRMSE")
 
-	for (i in corrs.indices) {
-		if (corrs[i] > bestCorrScore) {
-			bestCorrScore = corrs[i]
-			bestCorrInd = i
-		}
-
-		if (errs[i] < bestErrScore) {
-			bestErrScore = errs[i]
-			bestErrInd = i
-		}
-	}
-
-	return buildString {
-		append("Лучший по корреляции: График ${bestCorrInd + 1} с коэф. ${corrs[bestCorrInd]} и ошибкой ${errs[bestCorrInd]}.")
-		append("\n")
-		append("Лучший по погрешности: График ${bestErrInd + 1} с коэф. ${corrs[bestErrInd]} и ошибкой ${errs[bestErrInd]}.")
+	if (linearRMSE < polynomialRMSE) {
+		println("Линейная аппроксимация лучше.")
+	} else {
+		println("Полиномиальная аппроксимация лучше.")
 	}
 }
 
-private fun linearApproximation(vararg arrays: DoubleArray): DoubleArray {
-	val n = arrays[0].size
-	val m = arrays.size
+fun calculateRMSE(original: DoubleArray, approximation: DoubleArray): Double {
+	val sumSquaredErrors = original.indices.sumOf {
+		(original[it] - approximation[it]).pow(2)
+	}
 
-	val sums = DoubleArray(n) { 0.0 }
+	return sqrt(sumSquaredErrors / original.size)
+}
+
+fun linearApproximation(xData: DoubleArray, yData: DoubleArray): DoubleArray {
+	val n = xData.size
+	val xMean = xData.average()
+	val yMean = yData.average()
+
+	var numerator = 0.0
+	var denominator = 0.0
+
 	for (i in 0 until n) {
-		for (j in 0 until m) {
-			sums[i] += arrays[j][i]
-		}
+		numerator += (xData[i] - xMean) * (yData[i] - yMean)
+		denominator += (xData[i] - xMean).pow(2)
 	}
 
-	return sums.map { it / m }.toDoubleArray()
+	val a = numerator / denominator
+	val b = yMean - a * xMean
+
+	return DoubleArray(n) { a * xData[it] + b }
 }
 
-private fun polynomialApproximation(vararg arrays: DoubleArray): DoubleArray {
-	val n = arrays[0].size
-	val m = arrays.size
-
-	val approximatedValues = DoubleArray(n)
-	val obs = WeightedObservedPoints()
-
-	for (j in 0 until m) {
-		for (i in 0 until n) {
-			obs.add(i.toDouble(), arrays[j][i])
-		}
-	}
-
+fun polynomialApproximation(xData: DoubleArray, yData: DoubleArray): DoubleArray {
 	val fitter = PolynomialCurveFitter.create(2)
+	val points = WeightedObservedPoints()
 
-	val coefficients = fitter.fit(obs.toList())
-
-	for (i in 0 until n) {
-		approximatedValues[i] = evaluatePolynomial(coefficients, i.toDouble())
+	for (i in xData.indices) {
+		points.add(xData[i], yData[i])
 	}
 
-	return approximatedValues
-}
+	val coefficients = fitter.fit(points.toList())
 
-private fun evaluatePolynomial(coefficients: DoubleArray, x: Double): Double {
-	var result = 0.0
-	for (i in coefficients.indices) {
-		result += coefficients[i] * x.pow(i.toDouble())
-	}
-	return result
+	val polynomialFunction = PolynomialFunction(coefficients)
+
+	return DoubleArray(xData.size) { polynomialFunction.value(xData[it]) }
 }
