@@ -60,7 +60,7 @@ fun simulateRuns(
 }
 
 class Factory(
-	val generatorChance: Double, val exitTime: Double
+	private val generatorChance: Double, private val exitTime: Double
 ) {
 	private val random = Random()
 
@@ -172,7 +172,7 @@ class Factory(
 			}
 		}
 
-		statistics.duration = (currentTime / 1000).toDouble()
+		statistics.duration = (currentTime / 1000)
 	}
 }
 

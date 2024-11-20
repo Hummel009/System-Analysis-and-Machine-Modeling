@@ -140,7 +140,7 @@ class Factory {
 			}
 		}
 
-		statistics.duration = (currentTime / 1000).toDouble()
+		statistics.duration = (currentTime / 1000)
 	}
 }
 
