@@ -24,7 +24,7 @@ fun researchCorrelation(statisticsArrayArray: Array<Array<Statistics>>) {
 	chart.yAxisTitle = "Значение"
 
 	for (i in graphs.indices) {
-		val seriesName = "${i * 10 + 10}%"
+		val seriesName = "${(i + 1) * 10}%"
 		chart.addSeries(seriesName, graphs[i].indices.map { it.toDouble() }.toDoubleArray(), graphs[i]).apply {
 			markerColor = if (i == graphs.lastIndex) Color.GREEN else Color.BLUE
 			lineColor = if (i == graphs.lastIndex) Color.GREEN else Color.BLUE

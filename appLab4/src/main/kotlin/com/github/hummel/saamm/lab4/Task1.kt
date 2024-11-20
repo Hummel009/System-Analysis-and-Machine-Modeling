@@ -33,7 +33,7 @@ fun researchCorrelation(statisticsArrayArray: Array<Array<Statistics>>) {
 	chart.yAxisTitle = "Значение"
 
 	for (i in graphs.indices) {
-		val seriesName = "${(i + 1) * 12.5}%"
+		val seriesName = "${(i + 1) * 5}%"
 		chart.addSeries(seriesName, graphs[i].indices.map { it.toDouble() }.toDoubleArray(), graphs[i]).apply {
 			markerColor = if (i == graphs.lastIndex) Color.GREEN else Color.BLUE
 			lineColor = if (i == graphs.lastIndex) Color.GREEN else Color.BLUE
@@ -56,7 +56,7 @@ fun researchCorrelation(statisticsArrayArray: Array<Array<Statistics>>) {
 		lineColor = Color.ORANGE
 	}
 
-	BitmapEncoder.saveBitmap(chart, "./output/task1", BitmapFormat.JPG)
+	BitmapEncoder.saveBitmap(chart, "./$outputDir/task1", BitmapFormat.JPG)
 }
 
 private fun calculateError(data: DoubleArray, reference: DoubleArray): Double =
