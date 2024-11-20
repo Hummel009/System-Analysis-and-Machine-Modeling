@@ -62,29 +62,30 @@ fun researchCorrelation(statisticsArrayArray: Array<Array<Statistics>>) {
 private fun calculateError(data: DoubleArray, reference: DoubleArray): Double =
 	sqrt(data.zip(reference).map { (d, r) -> (d - r).pow(2) }.average())
 
-private fun determineBestApproximations(correlationCoefficients: DoubleArray, errors: DoubleArray): String {
-	require(correlationCoefficients.size == errors.size) { "Массивы должны иметь одинаковую длину" }
+private fun determineBestApproximations(corrs: DoubleArray, errs: DoubleArray): String {
+	require(corrs.size == errs.size) { "Массивы должны иметь одинаковую длину" }
 
-	var bestCorrelationIndex = -1
-	var bestErrorIndex = -1
-	var bestCorrelationScore = Double.NEGATIVE_INFINITY
-	var bestErrorScore = Double.POSITIVE_INFINITY
+	var bestCorrInd = -1
+	var bestErrInd = -1
+	var bestCorrScore = Double.NEGATIVE_INFINITY
+	var bestErrScore = Double.POSITIVE_INFINITY
 
-	for (i in correlationCoefficients.indices) {
-		if (correlationCoefficients[i] > bestCorrelationScore) {
-			bestCorrelationScore = correlationCoefficients[i]
-			bestCorrelationIndex = i
+	for (i in corrs.indices) {
+		if (corrs[i] > bestCorrScore) {
+			bestCorrScore = corrs[i]
+			bestCorrInd = i
 		}
 
-		if (errors[i] < bestErrorScore) {
-			bestErrorScore = errors[i]
-			bestErrorIndex = i
+		if (errs[i] < bestErrScore) {
+			bestErrScore = errs[i]
+			bestErrInd = i
 		}
 	}
 
 	return buildString {
-		append("Лучший по корреляции: График ${bestCorrelationIndex + 1} с коэффициентом корреляции ${correlationCoefficients[bestCorrelationIndex]}.\n")
-		append("Лучший по погрешности: График ${bestErrorIndex + 1} с ошибкой ${errors[bestErrorIndex]}.")
+		append("Лучший по корреляции: График ${bestCorrInd + 1} с коэф. ${corrs[bestCorrInd]} и ошибкой ${errs[bestCorrInd]}.")
+		append("\n")
+		append("Лучший по погрешности: График ${bestErrInd + 1} с коэф. ${corrs[bestErrInd]} и ошибкой ${errs[bestErrInd]}.")
 	}
 }
 
