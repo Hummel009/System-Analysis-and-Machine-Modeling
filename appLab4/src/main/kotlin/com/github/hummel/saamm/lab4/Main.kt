@@ -12,14 +12,14 @@ private const val PACKETS_FOR_STORAGE: Int = 3
 val outputDir: File = mdIfNot("output")
 
 fun main() {
-	println("Which task: «1» or «2» or «3» or «4» or «5» or «6»")
+	println("Which task: «1» or «2» or «3»")
 
 	val input = readln().toInt()
 
 	when (input) {
 		1 -> {
 			val enoughRuns = 50
-			val statisticsArrayArray = Array(7) { i ->
+			val statisticsArrayArray = Array(10) { i ->
 				simulateRuns(enoughRuns, generatorChance = i * 0.05 + 0.05)
 			}
 
