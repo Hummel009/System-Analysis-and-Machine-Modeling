@@ -11,8 +11,8 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 
 fun researchTransitionPeriod(statisticsArray: Array<Statistics>) {
-	val timeSeries = statisticsArray[0].productTimes.keys.map { it.toDouble() }
-	val valueSeries = statisticsArray[0].productTimes.values.map { it.toDouble() }
+	val timeSeries = statisticsArray[0].productTimes.keys.map { it }
+	val valueSeries = statisticsArray[0].productTimes.values.map { it }
 
 	val chart = XYChart(1600, 900)
 	chart.title = "Изменение отклика в модельном времени"

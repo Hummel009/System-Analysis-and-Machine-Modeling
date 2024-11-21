@@ -10,7 +10,7 @@ import kotlin.math.sqrt
 fun researchContinousRunPossibility(statisticsArrayArray: Array<Array<Statistics>>, cutoff: Int) {
 	val longValueSeries = statisticsArrayArray[0].flatMap { statistics ->
 		statistics.productTimes.filter { (key, _) -> key > cutoff }.values
-	}.chunked(statisticsArrayArray[1].size).flatMap { it }.toDoubleArray()
+	}.chunked(statisticsArrayArray[1].size).flatten().toDoubleArray()
 
 	val shortValueSeries = statisticsArrayArray[1].flatMap { statistics ->
 		statistics.productTimes.filter { (key, _) -> key > cutoff }.values
