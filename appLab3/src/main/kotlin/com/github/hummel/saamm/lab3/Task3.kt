@@ -7,7 +7,6 @@ import org.knowm.xchart.BitmapEncoder.BitmapFormat
 import org.knowm.xchart.XYChart
 import kotlin.math.sqrt
 
-
 fun researchAccuracy(statisticsArrayArray: Array<Array<Statistics>>) {
 	val range = 1..statisticsArrayArray.lastIndex
 

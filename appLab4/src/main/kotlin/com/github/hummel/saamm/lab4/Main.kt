@@ -1,6 +1,8 @@
-package com.github.hummel.saamm.lab2
+package com.github.hummel.saamm.lab4
 
+import java.io.File
 import java.util.*
+import kotlin.math.pow
 
 private const val PARTS_1_FOR_PRODUCT: Int = 3
 private const val PARTS_2_FOR_PRODUCT: Int = 2
@@ -8,17 +10,56 @@ private const val PARTS_2_FOR_PRODUCT: Int = 2
 private const val PRODUCTS_FOR_PACKET: Int = 8
 private const val PACKETS_FOR_STORAGE: Int = 3
 
-fun main() {
-	val statisticsArray = simulateRuns(10)
+val outputDir: File = mdIfNot("output")
 
-	printAverageStatistics(statisticsArray)
+fun main() {
+	println("Which task: «1» or «2» or «3»")
+
+	val input = readln().toInt()
+
+	when (input) {
+		1 -> {
+			val enoughRuns = 50
+			val statisticsArrayArray = Array(10) { i ->
+				simulateRuns(
+					enoughRuns, generatorTime = (i + 1).toDouble().pow(2.0).toInt()
+				)
+			}
+
+			researchCorrelation(statisticsArrayArray)
+		}
+
+		2 -> {
+			val enoughRuns = 100
+			val statisticsArrayArray = Array(3) { i ->
+				simulateRuns(
+					enoughRuns, generatorTime = (i + 1).toDouble().pow(2.0).toInt(), exitTime = (i + 1) * 10000.0
+				)
+			}
+
+			researchComparison(statisticsArrayArray)
+		}
+
+		3 -> {
+			val enoughRuns = 50
+			val statisticsArrayArray = Array(5) { i ->
+				simulateRuns(
+					enoughRuns, generatorTime = (i + 1).toDouble().pow(2.0).toInt(), exitTime = (i + 1) * 10000.0
+				)
+			}
+
+			research2fExperiment(statisticsArrayArray)
+		}
+	}
 }
 
-fun simulateRuns(runs: Int): Array<Statistics> {
+fun simulateRuns(
+	runs: Int, generatorTime: Int = 1, exitTime: Double = 48000.0
+): Array<Statistics> {
 	val statisticsArray = Array(runs) { Statistics() }
 	val threadArray = statisticsArray.map { stat ->
 		Thread {
-			Factory().apply {
+			Factory(generatorTime, exitTime).apply {
 				statistics = stat
 			}.run()
 		}
@@ -30,7 +71,9 @@ fun simulateRuns(runs: Int): Array<Statistics> {
 	return statisticsArray
 }
 
-class Factory {
+class Factory(
+	private val generatorTime: Int, private val exitTime: Double
+) {
 	private val random = Random()
 
 	private var partsType1 = 0
@@ -50,15 +93,15 @@ class Factory {
 
 		queue.add(Task(currentTime, TaskType.GENERATOR))
 
-		while (storagePackets <= 1000) {
+		while (currentTime <= exitTime * 1000) {
 			val task = queue.poll()
 			currentTime = task.endTime
 
 			when (task.taskType) {
 				TaskType.GENERATOR -> {
-					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5) * 1000 + 500
+					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5) * 1000 + 500 + 10 * generatorTime
 
-					if (random.nextBoolean()) {
+					if (random.nextDouble() <= 0.5) {
 						partsType1++
 						statistics.partsType1++
 						queue.add(Task(currentTime + time, TaskType.MACHINE_1))
@@ -123,6 +166,7 @@ class Factory {
 						packPlacePackets -= PACKETS_FOR_STORAGE
 						storagePackets += PACKETS_FOR_STORAGE
 						statistics.storagePackets += PACKETS_FOR_STORAGE
+						statistics.productTimes[currentTime / 1000] = currentTime / 1000 / storagePackets / 8
 					}
 				}
 
@@ -153,6 +197,7 @@ class Statistics {
 	var packPlacePackets: Int = 0
 	var storagePackets: Int = 0
 	var duration: Double = 0.0
+	val productTimes: MutableMap<Double, Double> = mutableMapOf()
 
 	fun getProduceTime(): Double = duration / (storagePackets * 8)
 }
@@ -161,4 +206,12 @@ data class Task(val endTime: Double, val taskType: TaskType)
 
 enum class TaskType {
 	GENERATOR, MACHINE_1, MACHINE_2, ASSEMBLER, TRANSPORTER, PACKER
+}
+
+fun mdIfNot(path: String): File {
+	val soundsDir = File(path)
+	if (!soundsDir.exists()) {
+		soundsDir.mkdirs()
+	}
+	return soundsDir
 }
