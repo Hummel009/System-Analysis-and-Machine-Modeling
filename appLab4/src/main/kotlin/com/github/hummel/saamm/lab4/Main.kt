@@ -30,7 +30,14 @@ fun main() {
 		}
 
 		2 -> {
+			val enoughRuns = 50
+			val statisticsArrayArray = Array(3) { i ->
+				simulateRuns(
+					enoughRuns, generatorTime = (i + 1).toDouble().pow(2.0).toInt(), exitTime = (i + 1) * 10000.0
+				)
+			}
 
+			researchComparison(statisticsArrayArray)
 		}
 
 		3 -> {

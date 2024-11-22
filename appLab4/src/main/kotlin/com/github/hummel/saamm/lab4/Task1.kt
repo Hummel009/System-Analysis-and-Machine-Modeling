@@ -90,7 +90,7 @@ fun researchCorrelation(statisticsArrayArray: Array<Array<Statistics>>) {
 	}
 }
 
-fun calculateRMSE(original: DoubleArray, approximation: DoubleArray): Double {
+private fun calculateRMSE(original: DoubleArray, approximation: DoubleArray): Double {
 	val sumSquaredErrors = original.indices.sumOf {
 		(original[it] - approximation[it]).pow(2)
 	}
@@ -98,7 +98,7 @@ fun calculateRMSE(original: DoubleArray, approximation: DoubleArray): Double {
 	return sqrt(sumSquaredErrors / original.size)
 }
 
-fun linearApproximation(xData: DoubleArray, yData: DoubleArray): DoubleArray {
+private fun linearApproximation(xData: DoubleArray, yData: DoubleArray): DoubleArray {
 	val n = xData.size
 	val xMean = xData.average()
 	val yMean = yData.average()
@@ -117,7 +117,7 @@ fun linearApproximation(xData: DoubleArray, yData: DoubleArray): DoubleArray {
 	return DoubleArray(n) { a * xData[it] + b }
 }
 
-fun polynomialApproximation(xData: DoubleArray, yData: DoubleArray): DoubleArray {
+private fun polynomialApproximation(xData: DoubleArray, yData: DoubleArray): DoubleArray {
 	val fitter = PolynomialCurveFitter.create(2)
 	val points = WeightedObservedPoints()
 
