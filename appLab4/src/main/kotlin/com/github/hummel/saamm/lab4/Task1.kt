@@ -16,7 +16,7 @@ fun researchCorrelation(statisticsArrayArray: Array<Array<Statistics>>) {
 
 	val chart = XYChart(1600, 900)
 	chart.title = "Сравнение результатов"
-	chart.xAxisTitle = "Параметр: шанс производства детали"
+	chart.xAxisTitle = "Параметр: время генерации детали"
 	chart.yAxisTitle = "Отклик: время производства изделия"
 
 	val xData = DoubleArray(yData.size) { i -> (i + 1) * 0.05 }
