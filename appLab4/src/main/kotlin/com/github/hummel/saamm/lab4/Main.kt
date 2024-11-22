@@ -2,6 +2,7 @@ package com.github.hummel.saamm.lab4
 
 import java.io.File
 import java.util.*
+import kotlin.math.pow
 
 private const val PARTS_1_FOR_PRODUCT: Int = 3
 private const val PARTS_2_FOR_PRODUCT: Int = 2
@@ -20,7 +21,9 @@ fun main() {
 		1 -> {
 			val enoughRuns = 50
 			val statisticsArrayArray = Array(10) { i ->
-				simulateRuns(enoughRuns, generatorChance = (i + 1) * 0.05)
+				simulateRuns(
+					enoughRuns, generatorTime = (i + 1).toDouble().pow(2.0).toInt()
+				)
 			}
 
 			researchCorrelation(statisticsArrayArray)
@@ -33,7 +36,9 @@ fun main() {
 		3 -> {
 			val enoughRuns = 50
 			val statisticsArrayArray = Array(5) { i ->
-				simulateRuns(enoughRuns, generatorChance = (i + 1) * 0.1, exitTime = (i + 1) * 10000.0)
+				simulateRuns(
+					enoughRuns, generatorTime = (i + 1).toDouble().pow(2.0).toInt(), exitTime = (i + 1) * 10000.0
+				)
 			}
 
 			research2fExperiment(statisticsArrayArray)
@@ -42,12 +47,12 @@ fun main() {
 }
 
 fun simulateRuns(
-	runs: Int, generatorChance: Double = 0.5, exitTime: Double = 48000.0
+	runs: Int, generatorTime: Int = 1, exitTime: Double = 48000.0
 ): Array<Statistics> {
 	val statisticsArray = Array(runs) { Statistics() }
 	val threadArray = statisticsArray.map { stat ->
 		Thread {
-			Factory(generatorChance, exitTime).apply {
+			Factory(generatorTime, exitTime).apply {
 				statistics = stat
 			}.run()
 		}
@@ -60,7 +65,7 @@ fun simulateRuns(
 }
 
 class Factory(
-	private val generatorChance: Double, private val exitTime: Double
+	private val generatorTime: Int, private val exitTime: Double
 ) {
 	private val random = Random()
 
@@ -87,9 +92,9 @@ class Factory(
 
 			when (task.taskType) {
 				TaskType.GENERATOR -> {
-					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5) * 1000 + 500
+					val time = (random.nextGaussian().coerceIn(-0.5, 0.5) + 0.5) * 1000 + 500 + 10 * generatorTime
 
-					if (random.nextDouble() <= generatorChance) {
+					if (random.nextDouble() <= 0.5) {
 						partsType1++
 						statistics.partsType1++
 						queue.add(Task(currentTime + time, TaskType.MACHINE_1))
